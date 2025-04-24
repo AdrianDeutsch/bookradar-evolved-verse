@@ -1,0 +1,145 @@
+
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Book, BookOpen, Heart, BookmarkPlus, Share2 } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from '@/components/ui/use-toast';
+
+interface BookCardProps {
+  id: string;
+  title: string;
+  author: string;
+  coverUrl: string;
+  rating?: number;
+}
+
+const BookCard = ({ id, title, author, coverUrl, rating }: BookCardProps) => {
+  const { t } = useLanguage();
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isInWishlist, setIsInWishlist] = useState(false);
+
+  const toggleFavorite = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsFavorite(!isFavorite);
+    toast({
+      title: !isFavorite ? t('success') : t('success'),
+      description: !isFavorite 
+        ? `"${title}" ${t('addToFavorites').toLowerCase()}` 
+        : `"${title}" aus Favoriten entfernt`,
+      duration: 3000,
+    });
+  };
+
+  const toggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsInWishlist(!isInWishlist);
+    toast({
+      title: t('success'),
+      description: !isInWishlist 
+        ? `"${title}" ${t('addToWishlist').toLowerCase()}` 
+        : `"${title}" aus Wunschliste entfernt`,
+      duration: 3000,
+    });
+  };
+
+  const shareBook = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Implement sharing functionality
+    toast({
+      title: t('share'),
+      description: `${t('shareBook')}: "${title}"`,
+      duration: 3000,
+    });
+  };
+
+  return (
+    <Link to={`/book/${id}`}>
+      <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <div className="relative aspect-[2/3] overflow-hidden">
+          {coverUrl ? (
+            <img 
+              src={coverUrl} 
+              alt={title} 
+              className="object-cover w-full h-full book-cover" 
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-muted">
+              <Book className="h-12 w-12 text-muted-foreground" />
+            </div>
+          )}
+          
+          {rating && (
+            <div className="absolute top-2 right-2 bg-bookradar-primary text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
+              {rating}
+            </div>
+          )}
+        </div>
+        
+        <CardContent className="p-4">
+          <h3 className="font-semibold leading-tight line-clamp-2 mb-1">{title}</h3>
+          <p className="text-sm text-muted-foreground">{author}</p>
+        </CardContent>
+        
+        <CardFooter className="p-2 pt-0 flex justify-between items-center">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={toggleFavorite} className="hover:text-bookradar-primary">
+                  <Heart className={`h-4 w-4 ${isFavorite ? 'fill-bookradar-primary text-bookradar-primary' : ''}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('addToFavorites')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={toggleWishlist} className="hover:text-bookradar-primary">
+                  <BookmarkPlus className={`h-4 w-4 ${isInWishlist ? 'fill-bookradar-primary text-bookradar-primary' : ''}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('addToWishlist')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={shareBook} className="hover:text-bookradar-primary">
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('shareBook')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="hover:text-bookradar-primary">
+                  <BookOpen className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('startReading')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </CardFooter>
+      </Card>
+    </Link>
+  );
+};
+
+export default BookCard;
