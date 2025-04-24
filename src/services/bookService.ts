@@ -19,23 +19,40 @@ export interface SearchOptions {
   query: string;
   limit?: number;
   page?: number;
+  sortBy?: string;
+  filter?: string;
 }
 
 /**
- * Search for books using the OpenLibrary API
+ * Search for books using the OpenLibrary API with fallback to Google Books API
  */
-export const searchBooks = async ({ query, limit = 10, page = 1 }: SearchOptions): Promise<SearchResult[]> => {
+export const searchBooks = async ({ query, limit = 10, page = 1, sortBy = "relevance", filter = "" }: SearchOptions): Promise<SearchResult[]> => {
   if (!query.trim()) {
     return [];
   }
   
   try {
-    const response = await fetch(
-      `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=${limit}&page=${page}`
-    );
+    let apiUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=${limit}&page=${page}`;
+    
+    // Add sorting if specified
+    if (sortBy === 'title') {
+      apiUrl += '&sort=title';
+    } else if (sortBy === 'author') {
+      apiUrl += '&sort=author';
+    } else if (sortBy === 'year') {
+      apiUrl += '&sort=old';
+    }
+    
+    // Add filter for books with covers if specified
+    if (filter === 'withCover') {
+      apiUrl += '&has_fulltext=true';
+    }
+    
+    const response = await fetch(apiUrl);
     
     if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+      // Fallback to Google Books API if OpenLibrary fails
+      return searchGoogleBooks({ query, limit, page });
     }
     
     const data = await response.json();
@@ -50,17 +67,84 @@ export const searchBooks = async ({ query, limit = 10, page = 1 }: SearchOptions
       publishYear: doc.first_publish_year
     }));
   } catch (error) {
-    console.error('Error searching books:', error);
+    console.error('Error searching books on OpenLibrary:', error);
+    // Fallback to Google Books API
+    return searchGoogleBooks({ query, limit, page });
+  }
+}
+
+/**
+ * Fallback function to search books using Google Books API
+ */
+const searchGoogleBooks = async ({ query, limit = 10, page = 1 }: SearchOptions): Promise<SearchResult[]> => {
+  try {
+    // Google Books API uses startIndex instead of page
+    const startIndex = (page - 1) * limit;
+    
+    const response = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=${limit}&startIndex=${startIndex}`
+    );
+    
+    if (!response.ok) {
+      console.error('Error with Google Books API:', response.status);
+      return [];
+    }
+    
+    const data = await response.json();
+    
+    if (!data.items) {
+      return [];
+    }
+    
+    return data.items.map((item: any) => {
+      const volumeInfo = item.volumeInfo;
+      
+      return {
+        id: item.id,
+        title: volumeInfo.title || 'Unknown Title',
+        author: volumeInfo.authors ? volumeInfo.authors[0] : 'Unknown Author',
+        coverUrl: volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : null,
+        publishYear: volumeInfo.publishedDate ? parseInt(volumeInfo.publishedDate.substring(0, 4)) : undefined
+      };
+    });
+  } catch (error) {
+    console.error('Error searching books on Google Books:', error);
     return [];
   }
 }
 
 /**
- * Get book details from OpenLibrary API
+ * Get book details from OpenLibrary API with fallback to Google Books
  */
 export const getBookDetails = async (bookId: string) => {
   try {
     const response = await fetch(`https://openlibrary.org/works/${bookId}.json`);
+    
+    if (!response.ok) {
+      // Try to get details from Google Books if it looks like a Google ID
+      if (bookId.length > 10) {
+        return getGoogleBookDetails(bookId);
+      }
+      throw new Error(`Error: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching book details from OpenLibrary:', error);
+    // Try Google Books as fallback
+    if (bookId.length > 10) {
+      return getGoogleBookDetails(bookId);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get book details from Google Books API
+ */
+const getGoogleBookDetails = async (googleBookId: string) => {
+  try {
+    const response = await fetch(`https://www.googleapis.com/books/v1/volumes/${googleBookId}`);
     
     if (!response.ok) {
       throw new Error(`Error: ${response.status}`);
@@ -68,13 +152,13 @@ export const getBookDetails = async (bookId: string) => {
     
     return await response.json();
   } catch (error) {
-    console.error('Error fetching book details:', error);
+    console.error('Error fetching book details from Google Books:', error);
     throw error;
   }
 }
 
 /**
- * Fetch "book of the day" from OpenLibrary
+ * Fetch "book of the day" from OpenLibrary with fallback
  */
 export const fetchBookOfTheDay = async (): Promise<SearchResult | null> => {
   // For the book of the day, we'll get a random book from a curated list
@@ -88,13 +172,13 @@ export const fetchBookOfTheDay = async (): Promise<SearchResult | null> => {
     );
     
     if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+      return fallbackBookOfTheDay();
     }
     
     const data = await response.json();
     
     if (!data.docs || data.docs.length === 0) {
-      return null;
+      return fallbackBookOfTheDay();
     }
     
     // Pick a random book from the results
@@ -112,6 +196,42 @@ export const fetchBookOfTheDay = async (): Promise<SearchResult | null> => {
     };
   } catch (error) {
     console.error('Error fetching book of the day:', error);
+    return fallbackBookOfTheDay();
+  }
+}
+
+/**
+ * Fallback for book of the day
+ */
+const fallbackBookOfTheDay = async (): Promise<SearchResult | null> => {
+  try {
+    const response = await fetch(
+      "https://www.googleapis.com/books/v1/volumes?q=subject:fiction&maxResults=40"
+    );
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    if (!data.items || data.items.length === 0) {
+      return null;
+    }
+    
+    // Pick a random book
+    const randomIndex = Math.floor(Math.random() * Math.min(data.items.length, 40));
+    const randomBook = data.items[randomIndex].volumeInfo;
+    
+    return {
+      id: data.items[randomIndex].id,
+      title: randomBook.title || 'Book of the Day',
+      author: randomBook.authors ? randomBook.authors[0] : 'Unknown Author',
+      coverUrl: randomBook.imageLinks ? randomBook.imageLinks.thumbnail : null,
+      publishYear: randomBook.publishedDate ? parseInt(randomBook.publishedDate.substring(0, 4)) : undefined
+    };
+  } catch (error) {
+    console.error('Error with fallback book of the day:', error);
     return null;
   }
 }

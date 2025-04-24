@@ -8,6 +8,10 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import Index from "./pages/Index";
 import Search from "./pages/Search";
+import Library from "./pages/Library";
+import Recommendations from "./pages/Recommendations";
+import Statistics from "./pages/Statistics";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +27,10 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/search" element={<Search />} />
+              <Route path="/library" element={<Library />} />
+              <Route path="/recommendations" element={<Recommendations />} />
+              <Route path="/statistics" element={<Statistics />} />
+              <Route path="/settings" element={<Settings />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
