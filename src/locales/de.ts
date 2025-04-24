@@ -1,4 +1,3 @@
-
 export const de = {
   home: 'Startseite',
   search: 'Suche',
@@ -73,5 +72,11 @@ export const de = {
   nonFiction: 'Sachbuch',
   scienceFiction: 'Science-Fiction',
   mystery: 'Krimi',
-  other: 'Andere'
+  other: 'Andere',
+  unknown: 'Unbekannt',
+  bookNotFound: 'Buch nicht gefunden',
+  loadingBook: 'Lade Buchdetails...',
+  errorLoadingBook: 'Fehler beim Laden der Buchdetails.',
+  publishedIn: 'Erschienen',
+  by: 'von',
 };

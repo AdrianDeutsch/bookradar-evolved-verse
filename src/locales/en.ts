@@ -1,4 +1,3 @@
-
 export const en = {
   home: 'Home',
   search: 'Search',
@@ -73,5 +72,11 @@ export const en = {
   nonFiction: 'Non-Fiction',
   scienceFiction: 'Science Fiction',
   mystery: 'Mystery',
-  other: 'Other'
+  other: 'Other',
+  unknown: 'Unknown',
+  bookNotFound: 'Book not found',
+  loadingBook: 'Loading book details...',
+  errorLoadingBook: 'Error loading book details.',
+  publishedIn: 'Published in',
+  by: 'by',
 };

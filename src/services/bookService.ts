@@ -1,3 +1,4 @@
+import { getOpenLibraryBookDetails, getGoogleBookDetails } from './bookApi';
 
 interface OpenLibraryDoc {
   key: string;
@@ -13,6 +14,7 @@ export interface SearchResult {
   author: string;
   coverUrl: string | null;
   publishYear?: number;
+  description?: string | null;
 }
 
 export interface SearchOptions {
@@ -64,7 +66,8 @@ export const searchBooks = async ({ query, limit = 10, page = 1, sortBy = "relev
       coverUrl: doc.cover_i 
         ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` 
         : null,
-      publishYear: doc.first_publish_year
+      publishYear: doc.first_publish_year,
+      description: null
     }));
   } catch (error) {
     console.error('Error searching books on OpenLibrary:', error);
@@ -104,7 +107,8 @@ const searchGoogleBooks = async ({ query, limit = 10, page = 1 }: SearchOptions)
         title: volumeInfo.title || 'Unknown Title',
         author: volumeInfo.authors ? volumeInfo.authors[0] : 'Unknown Author',
         coverUrl: volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : null,
-        publishYear: volumeInfo.publishedDate ? parseInt(volumeInfo.publishedDate.substring(0, 4)) : undefined
+        publishYear: volumeInfo.publishedDate ? parseInt(volumeInfo.publishedDate.substring(0, 4)) : undefined,
+        description: volumeInfo.description || null
       };
     });
   } catch (error) {
@@ -113,49 +117,24 @@ const searchGoogleBooks = async ({ query, limit = 10, page = 1 }: SearchOptions)
   }
 }
 
-/**
- * Get book details from OpenLibrary API with fallback to Google Books
- */
 export const getBookDetails = async (bookId: string) => {
   try {
-    const response = await fetch(`https://openlibrary.org/works/${bookId}.json`);
-    
-    if (!response.ok) {
-      // Try to get details from Google Books if it looks like a Google ID
-      if (bookId.length > 10) {
-        return getGoogleBookDetails(bookId);
+    // Try OpenLibrary first
+    if (bookId.length < 20) { // OpenLibrary IDs are typically shorter
+      try {
+        return await getOpenLibraryBookDetails(bookId);
+      } catch (error) {
+        console.error('OpenLibrary fetch failed, trying Google Books:', error);
       }
-      throw new Error(`Error: ${response.status}`);
     }
     
-    return await response.json();
+    // Fallback to Google Books API
+    return await getGoogleBookDetails(bookId);
   } catch (error) {
-    console.error('Error fetching book details from OpenLibrary:', error);
-    // Try Google Books as fallback
-    if (bookId.length > 10) {
-      return getGoogleBookDetails(bookId);
-    }
+    console.error('All APIs failed:', error);
     throw error;
   }
-}
-
-/**
- * Get book details from Google Books API
- */
-const getGoogleBookDetails = async (googleBookId: string) => {
-  try {
-    const response = await fetch(`https://www.googleapis.com/books/v1/volumes/${googleBookId}`);
-    
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching book details from Google Books:', error);
-    throw error;
-  }
-}
+};
 
 /**
  * Fetch "book of the day" from OpenLibrary with fallback
@@ -192,7 +171,8 @@ export const fetchBookOfTheDay = async (): Promise<SearchResult | null> => {
       coverUrl: randomBook.cover_i 
         ? `https://covers.openlibrary.org/b/id/${randomBook.cover_i}-M.jpg` 
         : null,
-      publishYear: randomBook.first_publish_year
+      publishYear: randomBook.first_publish_year,
+      description: null
     };
   } catch (error) {
     console.error('Error fetching book of the day:', error);
@@ -228,7 +208,8 @@ const fallbackBookOfTheDay = async (): Promise<SearchResult | null> => {
       title: randomBook.title || 'Book of the Day',
       author: randomBook.authors ? randomBook.authors[0] : 'Unknown Author',
       coverUrl: randomBook.imageLinks ? randomBook.imageLinks.thumbnail : null,
-      publishYear: randomBook.publishedDate ? parseInt(randomBook.publishedDate.substring(0, 4)) : undefined
+      publishYear: randomBook.publishedDate ? parseInt(randomBook.publishedDate.substring(0, 4)) : undefined,
+      description: randomBook.description || null
     };
   } catch (error) {
     console.error('Error with fallback book of the day:', error);
