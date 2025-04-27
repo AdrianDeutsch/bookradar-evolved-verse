@@ -44,6 +44,7 @@ export async function getOpenLibraryBookDetails(id: string) {
       author: authorName,
       description: work.description?.toString() || null,
       cover: coverUrl,
+      coverUrl: coverUrl,
       publishYear: work.first_publish_date ? parseInt(work.first_publish_date.slice(0, 4)) : null,
     };
   } catch (error) {
@@ -75,12 +76,18 @@ export async function getGoogleBookDetails(id: string): Promise<SearchResult> {
   const book: GoogleBook = await response.json();
   const { volumeInfo } = book;
 
+  const coverUrl = volumeInfo.imageLinks?.medium || 
+                  volumeInfo.imageLinks?.small || 
+                  volumeInfo.imageLinks?.thumbnail || 
+                  null;
+                  
   return {
     id: book.id,
     title: volumeInfo.title,
     author: volumeInfo.authors?.[0] || 'Unknown Author',
     description: volumeInfo.description || null,
-    cover: volumeInfo.imageLinks?.medium || volumeInfo.imageLinks?.small || volumeInfo.imageLinks?.thumbnail || null,
+    cover: coverUrl,
+    coverUrl: coverUrl,
     publishYear: volumeInfo.publishedDate ? parseInt(volumeInfo.publishedDate.slice(0, 4)) : null,
   };
 }

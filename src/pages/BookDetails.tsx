@@ -46,9 +46,9 @@ const BookDetails = () => {
       <div className="max-w-4xl mx-auto px-4">
         <div className="grid md:grid-cols-[300px_1fr] gap-8">
           <div className="space-y-4">
-            {book.cover ? (
+            {(book.cover || book.coverUrl) ? (
               <img 
-                src={book.cover} 
+                src={book.cover || book.coverUrl} 
                 alt={book.title} 
                 className="w-full rounded-lg shadow-lg"
               />

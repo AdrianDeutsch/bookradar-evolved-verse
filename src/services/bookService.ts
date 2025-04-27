@@ -1,3 +1,4 @@
+
 import { getOpenLibraryBookDetails, getGoogleBookDetails } from './bookApi';
 
 interface OpenLibraryDoc {
@@ -13,6 +14,7 @@ export interface SearchResult {
   title: string;
   author: string;
   coverUrl: string | null;
+  cover: string | null;  // Adding the 'cover' property for compatibility
   publishYear?: number;
   description?: string | null;
 }
@@ -66,6 +68,9 @@ export const searchBooks = async ({ query, limit = 10, page = 1, sortBy = "relev
       coverUrl: doc.cover_i 
         ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` 
         : null,
+      cover: doc.cover_i 
+        ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` 
+        : null,
       publishYear: doc.first_publish_year,
       description: null
     }));
@@ -107,6 +112,7 @@ const searchGoogleBooks = async ({ query, limit = 10, page = 1 }: SearchOptions)
         title: volumeInfo.title || 'Unknown Title',
         author: volumeInfo.authors ? volumeInfo.authors[0] : 'Unknown Author',
         coverUrl: volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : null,
+        cover: volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : null,
         publishYear: volumeInfo.publishedDate ? parseInt(volumeInfo.publishedDate.substring(0, 4)) : undefined,
         description: volumeInfo.description || null
       };
