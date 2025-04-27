@@ -75,11 +75,11 @@ const EnhancedBookOfTheDay = () => {
 
   if (loading) {
     return (
-      <Card className="overflow-hidden border border-border">
+      <Card className="overflow-hidden border border-border bg-card/50 backdrop-blur-sm shadow-sm transition-all duration-300">
         <div className="aspect-[3/2] bg-muted relative">
           <Skeleton className="h-full w-full" />
         </div>
-        <CardContent className="p-4">
+        <CardContent className="p-6">
           <Skeleton className="h-4 w-3/4 mb-2" />
           <Skeleton className="h-3 w-1/2 mb-4" />
           <Skeleton className="h-20 w-full mb-2" />
@@ -90,15 +90,15 @@ const EnhancedBookOfTheDay = () => {
 
   if (!book) {
     return (
-      <Card className="overflow-hidden border border-border">
-        <div className="p-8 text-center">
-          <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground">
+      <Card className="overflow-hidden border border-border bg-card/50 backdrop-blur-sm shadow-sm transition-all duration-300">
+        <div className="p-10 text-center">
+          <BookOpen className="h-12 w-12 mx-auto mb-6 text-muted-foreground" />
+          <p className="text-muted-foreground mb-4">
             {t('language') === 'de' 
               ? 'Konnte das Buch des Tages nicht laden.' 
               : 'Unable to load book of the day.'}
           </p>
-          <Button onClick={handleRefresh} className="mt-4" disabled={refreshing}>
+          <Button onClick={handleRefresh} variant="outline" className="mt-2" disabled={refreshing}>
             {refreshing ? (
               <>
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -115,58 +115,61 @@ const EnhancedBookOfTheDay = () => {
   }
 
   return (
-    <Card className="overflow-hidden border border-border hover:shadow-md transition-shadow duration-200">
-      <div className="aspect-[3/2] bg-muted relative">
-        {(book.coverUrl || book.cover) ? (
-          <img 
-            src={book.coverUrl || book.cover || ''} 
-            alt={book.title} 
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center">
-            <BookOpen className="h-12 w-12 text-muted-foreground" />
-          </div>
-        )}
-      </div>
-
-      <CardContent className="p-4 space-y-3">
-        <div>
-          <h3 className="font-medium text-lg leading-tight">
-            <Link to={`/book/${book.id}`} className="hover:underline">
-              {book.title}
-            </Link>
-          </h3>
-          <p className="text-sm text-muted-foreground">{book.author}</p>
-        </div>
-
-        {quote && (
-          <div className="border-l-4 border-primary/20 pl-3 italic text-sm text-muted-foreground">
-            <div className="flex gap-1 mb-1">
-              <Quote className="h-4 w-4 flex-shrink-0 mt-0.5" />
-              <p>"{quote.content}"</p>
+    <Card className="overflow-hidden border border-border bg-card/50 backdrop-blur-sm shadow-sm transition-all duration-300 hover:shadow-md">
+      <div className="flex flex-col md:flex-row">
+        <div className="md:w-1/3 bg-muted relative">
+          {(book.coverUrl || book.cover) ? (
+            <img 
+              src={book.coverUrl || book.cover || ''} 
+              alt={book.title} 
+              className="h-full w-full object-cover aspect-[2/3]"
+            />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center aspect-[2/3] min-h-[300px]">
+              <BookOpen className="h-12 w-12 text-muted-foreground" />
             </div>
-            <p className="text-right text-xs">— {quote.author}</p>
-          </div>
-        )}
-
-        <div className="flex justify-between pt-2">
-          <Link to={`/book/${book.id}`}>
-            <Button variant="outline" size="sm">
-              {t('language') === 'de' ? 'Details' : 'Details'}
-            </Button>
-          </Link>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={handleRefresh} 
-            disabled={refreshing}
-            aria-label={t('language') === 'de' ? 'Aktualisieren' : 'Refresh'}
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          </Button>
+          )}
         </div>
-      </CardContent>
+
+        <CardContent className="p-6 md:w-2/3 space-y-4 flex flex-col">
+          <div>
+            <h3 className="font-medium text-xl leading-tight">
+              <Link to={`/book/${book.id}`} className="hover:underline">
+                {book.title}
+              </Link>
+            </h3>
+            <p className="text-sm text-muted-foreground">{book.author}</p>
+          </div>
+
+          {quote && (
+            <div className="flex-1 border-l-4 border-primary/20 pl-4 italic text-sm text-muted-foreground">
+              <div className="flex gap-2 mb-1">
+                <Quote className="h-4 w-4 flex-shrink-0 mt-0.5 opacity-70" />
+                <p>"{quote.content}"</p>
+              </div>
+              <p className="text-right text-xs mt-2">— {quote.author}</p>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center pt-4 mt-auto">
+            <Link to={`/book/${book.id}`}>
+              <Button variant="default" size="sm">
+                {t('language') === 'de' ? 'Details ansehen' : 'View details'}
+              </Button>
+            </Link>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleRefresh} 
+              disabled={refreshing}
+              aria-label={t('language') === 'de' ? 'Aktualisieren' : 'Refresh'}
+              className="opacity-70 hover:opacity-100"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+        </CardContent>
+      </div>
     </Card>
   );
 };
