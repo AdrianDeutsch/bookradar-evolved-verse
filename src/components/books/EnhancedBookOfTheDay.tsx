@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Quote, RefreshCw } from 'lucide-react';
@@ -104,7 +105,8 @@ const EnhancedBookOfTheDay = () => {
                 {t('language') === 'de' ? 'Wird aktualisiert...' : 'Refreshing...'}
               </>
             ) : (
-              t('refresh')
+              // Use explicit strings instead of t("refresh") which doesn't exist
+              t('language') === 'de' ? 'Aktualisieren' : 'Refresh'
             )}
           </Button>
         </div>
