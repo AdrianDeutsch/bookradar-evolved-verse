@@ -121,36 +121,70 @@ export async function getGoogleBookDetails(id: string): Promise<SearchResult> {
   }
 }
 
-// New function to try getting book details from multiple sources
+// Improved function to try getting book details from multiple sources with better error handling
 export async function tryMultipleApiSources(id: string): Promise<SearchResult> {
+  // Track failed attempts
+  const failedApis = {
+    openLibrary: false,
+    googleBooks: false
+  };
+  
   try {
     // Try OpenLibrary first
     try {
       return await getOpenLibraryBookDetails(id);
     } catch (error) {
       console.log('OpenLibrary fetch failed, trying Google Books');
+      failedApis.openLibrary = true;
       // Fall through to next API
     }
     
     // Try Google Books
     try {
-      const googleId = id.startsWith('OL') ? null : id;
-      if (googleId) {
-        return await getGoogleBookDetails(googleId);
+      // If we have an OL ID, convert it to a search term for Google Books
+      if (id.startsWith('OL') && failedApis.openLibrary) {
+        // Try to extract title or author from the ID or use general search
+        const searchParam = id.replace(/OL|W/g, '').replace(/\d+/g, ' book ').trim();
+        const searchResponse = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchParam)}&maxResults=1`);
+        
+        if (searchResponse.ok) {
+          const searchData = await searchResponse.json();
+          if (searchData.items && searchData.items.length > 0) {
+            return await getGoogleBookDetails(searchData.items[0].id);
+          }
+        }
+      } else if (!id.startsWith('OL')) {
+        // Direct Google Books ID
+        return await getGoogleBookDetails(id);
       }
+      
+      failedApis.googleBooks = true;
+      throw new Error('Google Books search failed');
     } catch (error) {
       console.log('Google Books fetch failed');
       // Fall through to fallback
     }
     
-    // Last resort fallback (if everything fails)
+    // If we reach here, both APIs failed
+    // Last resort fallback (create a clean placeholder with the ID info)
+    let title = 'Book Information Unavailable';
+    let placeholderImage = '/placeholder.svg';
+    
+    // Try to extract meaningful info from the ID
+    if (id.startsWith('OL')) {
+      title = `Open Library Book (ID: ${id})`;
+      placeholderImage = `https://via.placeholder.com/300x450?text=${encodeURIComponent('Open Library Book')}`;
+    } else {
+      title = `Book (ID: ${id})`;
+    }
+    
     return {
       id,
-      title: 'Book Information Unavailable',
+      title,
       author: 'Unknown',
       description: 'We could not retrieve information for this book at this time. Please try again later.',
-      cover: '/placeholder.svg',
-      coverUrl: '/placeholder.svg',
+      cover: placeholderImage,
+      coverUrl: placeholderImage,
       publishYear: null
     };
   } catch (error) {
@@ -167,4 +201,10 @@ export async function tryMultipleApiSources(id: string): Promise<SearchResult> {
       publishYear: null
     };
   }
+}
+
+// New helper function for creating a nice placeholder image
+export function createPlaceholderImage(title: string = 'Book', author: string = ''): string {
+  const text = author ? `${title} by ${author}` : title;
+  return `https://via.placeholder.com/300x450?text=${encodeURIComponent(text.substring(0, 30))}`;
 }
