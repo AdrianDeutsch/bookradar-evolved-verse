@@ -83,9 +83,9 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="space-y-12">
-        {/* App header with centered logo */}
-        <div className="flex flex-col items-center space-y-4 pt-8 md:pt-10 max-w-4xl mx-auto">
+      <div className="space-y-12 relative">
+        {/* App header with centered logo and improved spacing */}
+        <div className="flex flex-col items-center space-y-5 pt-10 md:pt-12 max-w-4xl mx-auto">
           <div className="flex items-center space-x-3 animate-fade-in">
             <Book className="h-8 w-8 text-bookradar-primary" />
             <h1 className="text-3xl md:text-4xl font-bold">BookRadar</h1>
@@ -98,21 +98,25 @@ const Index = () => {
         </div>
 
         {/* Search bar with increased spacing */}
-        <div className="max-w-2xl mx-auto px-4 animate-fade-in">
+        <div className="max-w-2xl mx-auto px-4 pt-2 animate-fade-in">
           <SearchBar onSearch={handleSearch} />
         </div>
 
         {/* Main content with better spacing */}
-        <div className="space-y-16 mt-8 px-4">
+        <div className="space-y-20 mt-10 px-4">
           <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
             <BookOfTheDay />
           </div>
 
           <div className="animate-fade-in" style={{ animationDelay: "0.4s" }}>
             <Tabs defaultValue="recommended">
-              <TabsList className="mx-auto flex justify-center mb-6">
-                <TabsTrigger value="recommended">Empfehlungen</TabsTrigger>
-                <TabsTrigger value="recent">Kürzlich hinzugefügt</TabsTrigger>
+              <TabsList className="mx-auto flex justify-center mb-8">
+                <TabsTrigger value="recommended">
+                  {t('language') === 'de' ? 'Empfehlungen' : 'Recommended'}
+                </TabsTrigger>
+                <TabsTrigger value="recent">
+                  {t('language') === 'de' ? 'Kürzlich hinzugefügt' : 'Recently Added'}
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="recommended" className="pt-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
