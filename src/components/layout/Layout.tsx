@@ -24,7 +24,7 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
       <main className="flex-1 ml-0 lg:ml-64 transition-all duration-300 min-h-screen">
-        <div className="container px-4 py-8">
+        <div className="container mx-auto px-4 py-6">
           {children}
         </div>
       </main>

@@ -20,6 +20,7 @@ const BookCard = ({ id, title, author, coverUrl, rating }: BookCardProps) => {
   const { t } = useLanguage();
   const [isFavorite, setIsFavorite] = useState(false);
   const [isInWishlist, setIsInWishlist] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -55,16 +56,21 @@ const BookCard = ({ id, title, author, coverUrl, rating }: BookCardProps) => {
     });
   };
 
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
   return (
     <Link to={`/book/${id}`}>
-      <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 animate-fade-in">
         <div className="relative aspect-[2/3] overflow-hidden">
-          {coverUrl ? (
+          {coverUrl && !imageError ? (
             <img 
               src={coverUrl} 
               alt={title} 
               className="object-cover w-full h-full book-cover" 
               loading="lazy"
+              onError={handleImageError}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-muted">

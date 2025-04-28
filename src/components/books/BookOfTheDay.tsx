@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useLanguage } from '@/context/LanguageContext';
-import { Clock, Calendar, ExternalLink } from 'lucide-react';
+import { Clock, Calendar, ExternalLink, BookIcon } from 'lucide-react';
 import { fetchBookOfTheDay, getBookDetails } from '@/services/bookService';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,54 +28,75 @@ const quotes = [
 ];
 
 const BookOfTheDay = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const [book, setBook] = useState<BookWithQuote | null>(null);
   const [nextBookTime, setNextBookTime] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
-  useEffect(() => {
-    const fetchBook = async () => {
-      // Check if today's book is already in localStorage
-      const savedBookDate = localStorage.getItem('bookradar-book-of-the-day-date');
-      const today = new Date().toDateString();
-      
-      if (savedBookDate === today) {
-        const savedBook = localStorage.getItem('bookradar-book-of-the-day');
-        if (savedBook) {
+  const fetchBook = async (forceRefresh = false) => {
+    // Check if today's book is already in localStorage and not forcing refresh
+    const savedBookDate = localStorage.getItem('bookradar-book-of-the-day-date');
+    const today = new Date().toDateString();
+    
+    if (!forceRefresh && savedBookDate === today) {
+      const savedBook = localStorage.getItem('bookradar-book-of-the-day');
+      if (savedBook) {
+        try {
           setBook(JSON.parse(savedBook));
           setIsLoading(false);
           return;
+        } catch (e) {
+          // If parsing fails, continue to fetch a new book
+          console.error("Failed to parse saved book:", e);
         }
+      }
+    }
+    
+    try {
+      if (forceRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
       }
       
-      try {
-        setIsLoading(true);
-        const newBook = await fetchBookOfTheDay();
+      const newBook = await fetchBookOfTheDay();
+      
+      if (newBook) {
+        // Add a random quote
+        const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+        const bookWithQuote = { ...newBook, quote: randomQuote };
         
-        if (newBook) {
-          // Add a random quote
-          const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-          const bookWithQuote = { ...newBook, quote: randomQuote };
-          
-          setBook(bookWithQuote);
-          localStorage.setItem('bookradar-book-of-the-day', JSON.stringify(bookWithQuote));
-          localStorage.setItem('bookradar-book-of-the-day-date', today);
+        setBook(bookWithQuote);
+        localStorage.setItem('bookradar-book-of-the-day', JSON.stringify(bookWithQuote));
+        localStorage.setItem('bookradar-book-of-the-day-date', today);
+        
+        if (forceRefresh) {
+          toast({
+            title: language === 'de' ? 'Aktualisiert!' : 'Refreshed!',
+            description: language === 'de' 
+              ? 'Neues Buch des Tages geladen.'
+              : 'New book of the day loaded.',
+          });
         }
-      } catch (error) {
-        console.error('Failed to fetch book of the day:', error);
-        toast({
-          title: t('error'),
-          description: t('language') === 'de' 
-            ? 'Konnte das Buch des Tages nicht laden'
-            : 'Failed to load book of the day',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
       }
-    };
-    
+    } catch (error) {
+      console.error('Failed to fetch book of the day:', error);
+      toast({
+        title: t('error'),
+        description: language === 'de' 
+          ? 'Konnte das Buch des Tages nicht laden'
+          : 'Failed to load book of the day',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+  
+  useEffect(() => {
     fetchBook();
     
     // Update countdown
@@ -83,7 +104,7 @@ const BookOfTheDay = () => {
     const timer = setInterval(updateCountdown, 60000); // Update every minute
     
     return () => clearInterval(timer);
-  }, [t, toast]);
+  }, [t, toast, language]);
   
   const updateCountdown = () => {
     const now = new Date();
@@ -98,15 +119,19 @@ const BookOfTheDay = () => {
     setNextBookTime(`${hours}h ${minutes}m`);
   };
 
+  const handleRefresh = () => {
+    fetchBook(true);
+  };
+
   const openBookDetails = () => {
     if (book) {
-      window.open(`https://openlibrary.org/works/${book.id}`, '_blank');
+      window.open(`/book/${book.id}`, '_blank');
     }
   };
 
   if (isLoading) {
     return (
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
         <CardContent className="p-6 flex justify-center items-center min-h-[300px]">
           <div className="animate-pulse space-y-4 w-full">
             <div className="h-8 bg-muted rounded w-1/3 mb-6"></div>
@@ -133,11 +158,22 @@ const BookOfTheDay = () => {
   if (!book) return null;
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
       <CardContent className="p-0">
         <div className="relative">
-          <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-4 text-white">
-            <h2 className="font-bold text-lg">{t('bookOfTheDay')}</h2>
+          <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-4 text-white z-10">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-lg">{t('bookOfTheDay')}</h2>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleRefresh} 
+                disabled={isRefreshing}
+                className="text-white hover:text-white/80 hover:bg-black/20"
+              >
+                {language === 'de' ? 'Neues Buch' : 'New Book'}
+              </Button>
+            </div>
           </div>
           
           <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -147,10 +183,15 @@ const BookOfTheDay = () => {
                   src={book.coverUrl}
                   alt={book.title}
                   className="w-full h-auto rounded-lg shadow-md object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.src = '/placeholder.svg';
+                    e.currentTarget.onerror = null;
+                  }}
                 />
               ) : (
                 <div className="w-full aspect-[2/3] bg-muted rounded-lg shadow-md flex items-center justify-center">
-                  <span className="text-muted-foreground">No Cover Available</span>
+                  <BookIcon className="h-12 w-12 text-muted-foreground" />
                 </div>
               )}
             </div>

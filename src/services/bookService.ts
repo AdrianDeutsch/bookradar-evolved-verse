@@ -1,5 +1,5 @@
 
-import { getOpenLibraryBookDetails, getGoogleBookDetails } from './bookApi';
+import { getOpenLibraryBookDetails, getGoogleBookDetails, tryMultipleApiSources } from './bookApi';
 
 interface OpenLibraryDoc {
   key: string;
@@ -61,16 +61,21 @@ export const searchBooks = async ({ query, limit = 10, page = 1, sortBy = "relev
     
     const data = await response.json();
     
+    // Check if we have results
+    if (!data.docs || data.docs.length === 0) {
+      return searchGoogleBooks({ query, limit, page });
+    }
+    
     return data.docs.map((doc: OpenLibraryDoc) => ({
       id: doc.key.replace('/works/', ''),
-      title: doc.title,
+      title: doc.title || 'Unknown Title',
       author: doc.author_name ? doc.author_name[0] : 'Unknown Author',
       coverUrl: doc.cover_i 
         ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` 
-        : null,
+        : '/placeholder.svg',
       cover: doc.cover_i 
         ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` 
-        : null,
+        : '/placeholder.svg',
       publishYear: doc.first_publish_year,
       description: null
     }));
@@ -107,12 +112,17 @@ const searchGoogleBooks = async ({ query, limit = 10, page = 1 }: SearchOptions)
     return data.items.map((item: any) => {
       const volumeInfo = item.volumeInfo;
       
+      // Handle missing cover images with a placeholder
+      const coverUrl = volumeInfo.imageLinks ? 
+        (volumeInfo.imageLinks.thumbnail || volumeInfo.imageLinks.smallThumbnail) : 
+        '/placeholder.svg';
+      
       return {
         id: item.id,
         title: volumeInfo.title || 'Unknown Title',
         author: volumeInfo.authors ? volumeInfo.authors[0] : 'Unknown Author',
-        coverUrl: volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : null,
-        cover: volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : null,
+        coverUrl: coverUrl,
+        cover: coverUrl,
         publishYear: volumeInfo.publishedDate ? parseInt(volumeInfo.publishedDate.substring(0, 4)) : undefined,
         description: volumeInfo.description || null
       };
@@ -124,18 +134,12 @@ const searchGoogleBooks = async ({ query, limit = 10, page = 1 }: SearchOptions)
 }
 
 export const getBookDetails = async (bookId: string) => {
+  if (!bookId) {
+    throw new Error('Book ID is required');
+  }
+  
   try {
-    // Try OpenLibrary first
-    if (bookId.length < 20) { // OpenLibrary IDs are typically shorter
-      try {
-        return await getOpenLibraryBookDetails(bookId);
-      } catch (error) {
-        console.error('OpenLibrary fetch failed, trying Google Books:', error);
-      }
-    }
-    
-    // Fallback to Google Books API
-    return await getGoogleBookDetails(bookId);
+    return await tryMultipleApiSources(bookId);
   } catch (error) {
     console.error('All APIs failed:', error);
     throw error;
@@ -166,17 +170,24 @@ export const fetchBookOfTheDay = async (): Promise<SearchResult | null> => {
       return fallbackBookOfTheDay();
     }
     
-    // Pick a random book from the results
-    const randomIndex = Math.floor(Math.random() * Math.min(data.docs.length, 20));
-    const randomBook = data.docs[randomIndex];
+    // Pick a random book from the results that has a cover
+    let randomBooks = data.docs.filter((book: any) => book.cover_i);
+    
+    // If no books with covers, use all results
+    if (randomBooks.length === 0) {
+      randomBooks = data.docs;
+    }
+    
+    const randomIndex = Math.floor(Math.random() * randomBooks.length);
+    const randomBook = randomBooks[randomIndex];
     
     return {
       id: randomBook.key.replace('/works/', ''),
-      title: randomBook.title,
+      title: randomBook.title || 'Book of the Day',
       author: randomBook.author_name ? randomBook.author_name[0] : 'Unknown Author',
       coverUrl: randomBook.cover_i 
         ? `https://covers.openlibrary.org/b/id/${randomBook.cover_i}-M.jpg` 
-        : null,
+        : '/placeholder.svg',
       publishYear: randomBook.first_publish_year,
       description: null
     };
@@ -196,29 +207,49 @@ const fallbackBookOfTheDay = async (): Promise<SearchResult | null> => {
     );
     
     if (!response.ok) {
-      return null;
+      return defaultBookOfTheDay();
     }
     
     const data = await response.json();
     
     if (!data.items || data.items.length === 0) {
-      return null;
+      return defaultBookOfTheDay();
     }
     
-    // Pick a random book
-    const randomIndex = Math.floor(Math.random() * Math.min(data.items.length, 40));
-    const randomBook = data.items[randomIndex].volumeInfo;
+    // Pick a random book with image if possible
+    const booksWithImages = data.items.filter(
+      (item: any) => item.volumeInfo && item.volumeInfo.imageLinks
+    );
+    
+    const books = booksWithImages.length > 0 ? booksWithImages : data.items;
+    const randomIndex = Math.floor(Math.random() * books.length);
+    const randomBook = books[randomIndex].volumeInfo;
     
     return {
       id: data.items[randomIndex].id,
       title: randomBook.title || 'Book of the Day',
       author: randomBook.authors ? randomBook.authors[0] : 'Unknown Author',
-      coverUrl: randomBook.imageLinks ? randomBook.imageLinks.thumbnail : null,
+      coverUrl: randomBook.imageLinks ? randomBook.imageLinks.thumbnail : '/placeholder.svg',
       publishYear: randomBook.publishedDate ? parseInt(randomBook.publishedDate.substring(0, 4)) : undefined,
       description: randomBook.description || null
     };
   } catch (error) {
     console.error('Error with fallback book of the day:', error);
-    return null;
+    return defaultBookOfTheDay();
   }
 }
+
+/**
+ * Default book of the day when all else fails
+ */
+const defaultBookOfTheDay = (): SearchResult => {
+  return {
+    id: 'default',
+    title: 'Book of the Day',
+    author: 'BookRadar Selection',
+    coverUrl: '/placeholder.svg',
+    cover: '/placeholder.svg', 
+    publishYear: new Date().getFullYear(),
+    description: 'Discover a new book each day with BookRadar!'
+  };
+};

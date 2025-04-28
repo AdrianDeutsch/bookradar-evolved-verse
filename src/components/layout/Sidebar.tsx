@@ -45,7 +45,7 @@ const Sidebar = () => {
       <Button 
         variant="outline" 
         size="icon" 
-        className="fixed top-4 left-4 z-50 lg:hidden"
+        className="fixed top-4 right-4 z-50 lg:hidden"
         onClick={toggleSidebar}
         aria-label="Toggle menu"
       >

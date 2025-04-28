@@ -82,31 +82,31 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="space-y-8">
-        <div className="flex flex-col space-y-2">
-          <h1 className="text-3xl font-bold">BookRadar</h1>
-          <p className="text-muted-foreground">
+      <div className="space-y-10">
+        <div className="flex flex-col items-center space-y-3 pt-4 max-w-4xl mx-auto">
+          <h1 className="text-3xl font-bold text-center">BookRadar</h1>
+          <p className="text-muted-foreground text-center">
             {t('language') === 'de' 
               ? 'Deine intelligente Lese-App mit sozialen Features und Gamification'
               : 'Your intelligent reading app with social features and gamification'}
           </p>
         </div>
 
-        <div className="max-w-2xl">
+        <div className="max-w-2xl mx-auto mt-8">
           <SearchBar onSearch={handleSearch} />
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-10 mt-12">
           <BookOfTheDay />
 
-          <div className="mt-8">
+          <div className="mt-12 animate-fade-in">
             <Tabs defaultValue="recommended">
-              <TabsList>
+              <TabsList className="mx-auto flex justify-center mb-4">
                 <TabsTrigger value="recommended">Empfehlungen</TabsTrigger>
                 <TabsTrigger value="recent">Kürzlich hinzugefügt</TabsTrigger>
               </TabsList>
               <TabsContent value="recommended" className="pt-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {recommendedBooks.map(book => (
                     <BookCard
                       key={book.id}
@@ -120,7 +120,7 @@ const Index = () => {
                 </div>
               </TabsContent>
               <TabsContent value="recent" className="pt-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {recentBooks.map(book => (
                     <BookCard
                       key={book.id}
