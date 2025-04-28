@@ -1,4 +1,3 @@
-
 import { getOpenLibraryBookDetails, getGoogleBookDetails, tryMultipleApiSources } from './bookApi';
 
 interface OpenLibraryDoc {
@@ -181,13 +180,16 @@ export const fetchBookOfTheDay = async (): Promise<SearchResult | null> => {
     const randomIndex = Math.floor(Math.random() * randomBooks.length);
     const randomBook = randomBooks[randomIndex];
     
+    const coverUrl = randomBook.cover_i 
+        ? `https://covers.openlibrary.org/b/id/${randomBook.cover_i}-M.jpg` 
+        : '/placeholder.svg';
+    
     return {
       id: randomBook.key.replace('/works/', ''),
       title: randomBook.title || 'Book of the Day',
       author: randomBook.author_name ? randomBook.author_name[0] : 'Unknown Author',
-      coverUrl: randomBook.cover_i 
-        ? `https://covers.openlibrary.org/b/id/${randomBook.cover_i}-M.jpg` 
-        : '/placeholder.svg',
+      coverUrl: coverUrl,
+      cover: coverUrl, // Adding the required 'cover' property
       publishYear: randomBook.first_publish_year,
       description: null
     };
@@ -225,11 +227,14 @@ const fallbackBookOfTheDay = async (): Promise<SearchResult | null> => {
     const randomIndex = Math.floor(Math.random() * books.length);
     const randomBook = books[randomIndex].volumeInfo;
     
+    const coverUrl = randomBook.imageLinks ? randomBook.imageLinks.thumbnail : '/placeholder.svg';
+    
     return {
       id: data.items[randomIndex].id,
       title: randomBook.title || 'Book of the Day',
       author: randomBook.authors ? randomBook.authors[0] : 'Unknown Author',
-      coverUrl: randomBook.imageLinks ? randomBook.imageLinks.thumbnail : '/placeholder.svg',
+      coverUrl: coverUrl,
+      cover: coverUrl, // Adding the required 'cover' property
       publishYear: randomBook.publishedDate ? parseInt(randomBook.publishedDate.substring(0, 4)) : undefined,
       description: randomBook.description || null
     };
