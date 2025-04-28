@@ -106,14 +106,13 @@ const searchGoogleBooks = async ({ query, limit = 10, page = 1 }: SearchOptions)
     
     return data.items.map((item: any) => {
       const volumeInfo = item.volumeInfo;
-      const coverUrl = volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : null;
       
       return {
         id: item.id,
         title: volumeInfo.title || 'Unknown Title',
         author: volumeInfo.authors ? volumeInfo.authors[0] : 'Unknown Author',
-        coverUrl: coverUrl,
-        cover: coverUrl,
+        coverUrl: volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : null,
+        cover: volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : null,
         publishYear: volumeInfo.publishedDate ? parseInt(volumeInfo.publishedDate.substring(0, 4)) : undefined,
         description: volumeInfo.description || null
       };
@@ -170,16 +169,14 @@ export const fetchBookOfTheDay = async (): Promise<SearchResult | null> => {
     // Pick a random book from the results
     const randomIndex = Math.floor(Math.random() * Math.min(data.docs.length, 20));
     const randomBook = data.docs[randomIndex];
-    const coverUrl = randomBook.cover_i 
-      ? `https://covers.openlibrary.org/b/id/${randomBook.cover_i}-M.jpg` 
-      : null;
     
     return {
       id: randomBook.key.replace('/works/', ''),
       title: randomBook.title,
       author: randomBook.author_name ? randomBook.author_name[0] : 'Unknown Author',
-      coverUrl: coverUrl,
-      cover: coverUrl,
+      coverUrl: randomBook.cover_i 
+        ? `https://covers.openlibrary.org/b/id/${randomBook.cover_i}-M.jpg` 
+        : null,
       publishYear: randomBook.first_publish_year,
       description: null
     };
@@ -211,14 +208,12 @@ const fallbackBookOfTheDay = async (): Promise<SearchResult | null> => {
     // Pick a random book
     const randomIndex = Math.floor(Math.random() * Math.min(data.items.length, 40));
     const randomBook = data.items[randomIndex].volumeInfo;
-    const coverUrl = randomBook.imageLinks ? randomBook.imageLinks.thumbnail : null;
     
     return {
       id: data.items[randomIndex].id,
       title: randomBook.title || 'Book of the Day',
       author: randomBook.authors ? randomBook.authors[0] : 'Unknown Author',
-      coverUrl: coverUrl,
-      cover: coverUrl,
+      coverUrl: randomBook.imageLinks ? randomBook.imageLinks.thumbnail : null,
       publishYear: randomBook.publishedDate ? parseInt(randomBook.publishedDate.substring(0, 4)) : undefined,
       description: randomBook.description || null
     };

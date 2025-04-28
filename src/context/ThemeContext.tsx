@@ -25,29 +25,10 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
     localStorage.setItem('bookradar-theme', theme);
-    
-    // Add transition for smooth theme changes
-    root.style.setProperty('--transition-theme', 'all 0.3s ease');
-
-    const handler = () => {
-      if (localStorage.getItem('bookradar-theme') !== theme) {
-        const newTheme = localStorage.getItem('bookradar-theme') as Theme;
-        if (newTheme === 'light' || newTheme === 'dark') {
-          setTheme(newTheme);
-        }
-      }
-    };
-    
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prevTheme => {
-      const newTheme = prevTheme === 'light' ? 'dark' : 'light';
-      localStorage.setItem('bookradar-theme', newTheme);
-      return newTheme;
-    });
+    setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
   };
 
   return (
