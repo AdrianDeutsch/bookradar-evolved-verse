@@ -12,6 +12,7 @@ export const en = {
   error: "Error",
   success: "Success",
   explore: "Explore",
+  changeLanguage: "Change language",
   
   // Book details
   bookDetails: "Book Details",

@@ -12,6 +12,7 @@ export const de = {
   error: "Fehler",
   success: "Erfolg",
   explore: "Entdecken",
+  changeLanguage: "Sprache ändern",
   
   // Book details
   bookDetails: "Buchdetails",
