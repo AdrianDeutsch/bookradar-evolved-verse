@@ -28,6 +28,7 @@ const BookDetails = () => {
 
   const handleStartReading = () => {
     if (id) {
+      // Save book ID to localStorage for the reading mode
       navigate(`/book/${id}/read`);
     } else {
       toast({
