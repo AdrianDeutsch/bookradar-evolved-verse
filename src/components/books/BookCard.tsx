@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Book, BookOpen, Heart, BookmarkPlus, Share2 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
@@ -21,14 +21,6 @@ const BookCard = ({ id, title, author, coverUrl, rating }: BookCardProps) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [imageError, setImageError] = useState(false);
-
-  // Track image loading errors for analytics
-  useEffect(() => {
-    if (imageError) {
-      // Log this event to analytics
-      console.log('Image failed to load despite filtering:', { id, title, coverUrl });
-    }
-  }, [imageError, id, title, coverUrl]);
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -68,22 +60,8 @@ const BookCard = ({ id, title, author, coverUrl, rating }: BookCardProps) => {
     setImageError(true);
   };
 
-  // Create a nice background color based on title for the placeholder
-  const getColorFromString = (str: string): string => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    // Use pastel colors for better aesthetics
-    const hue = ((hash & 0xFFFFFF) % 360);
-    return `hsl(${hue}, 70%, 80%)`;
-  };
-
-  // For placeholder, create a truncated title that fits well
-  const truncatedTitle = title.length > 20 ? title.substring(0, 20) + '...' : title;
-
   return (
-    <Link to={`/book/${id}`} className="h-full">
+    <Link to={`/book/${id}`}>
       <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 animate-fade-in">
         <div className="relative aspect-[2/3] overflow-hidden">
           {coverUrl && !imageError ? (
@@ -95,12 +73,8 @@ const BookCard = ({ id, title, author, coverUrl, rating }: BookCardProps) => {
               onError={handleImageError}
             />
           ) : (
-            <div 
-              className="w-full h-full flex flex-col items-center justify-center p-4 text-center"
-              style={{ backgroundColor: getColorFromString(title) }}
-            >
-              <Book className="h-12 w-12 text-muted-foreground mb-2" />
-              <span className="text-sm font-medium text-foreground">{truncatedTitle}</span>
+            <div className="w-full h-full flex items-center justify-center bg-muted">
+              <Book className="h-12 w-12 text-muted-foreground" />
             </div>
           )}
           

@@ -19,14 +19,7 @@ interface OpenLibraryAuthor {
 export async function getOpenLibraryBookDetails(id: string) {
   try {
     // First get the work details
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-    
-    const workResponse = await fetch(`https://openlibrary.org/works/${id}.json`, { 
-      signal: controller.signal 
-    });
-    clearTimeout(timeoutId);
-    
+    const workResponse = await fetch(`https://openlibrary.org/works/${id}.json`);
     if (!workResponse.ok) throw new Error('Work not found');
     const work: OpenLibraryWork = await workResponse.json();
 
@@ -64,7 +57,7 @@ export async function getOpenLibraryBookDetails(id: string) {
 
     // If no cover, try to fetch from other sources or use default
     if (!coverUrl) {
-      coverUrl = createPlaceholderImage(work.title || 'Book');
+      coverUrl = `https://via.placeholder.com/300x450?text=${encodeURIComponent(work.title || 'Book')}`;
     }
 
     return {
@@ -100,14 +93,7 @@ interface GoogleBook {
 
 export async function getGoogleBookDetails(id: string): Promise<SearchResult> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-    
-    const response = await fetch(`https://www.googleapis.com/books/v1/volumes/${id}`, { 
-      signal: controller.signal 
-    });
-    clearTimeout(timeoutId);
-    
+    const response = await fetch(`https://www.googleapis.com/books/v1/volumes/${id}`);
     if (!response.ok) throw new Error('Book not found');
     
     const book: GoogleBook = await response.json();
@@ -118,7 +104,7 @@ export async function getGoogleBookDetails(id: string): Promise<SearchResult> {
                     volumeInfo.imageLinks?.medium || 
                     volumeInfo.imageLinks?.small || 
                     volumeInfo.imageLinks?.thumbnail || 
-                    createPlaceholderImage(volumeInfo.title || 'Book');
+                    `https://via.placeholder.com/300x450?text=${encodeURIComponent(volumeInfo.title || 'Book')}`;
                     
     return {
       id: book.id,
@@ -135,130 +121,50 @@ export async function getGoogleBookDetails(id: string): Promise<SearchResult> {
   }
 }
 
-// Improved function to try getting book details from multiple sources with better error handling
+// New function to try getting book details from multiple sources
 export async function tryMultipleApiSources(id: string): Promise<SearchResult> {
-  // Return values from partial successful data
-  let partialResult: Partial<SearchResult> = {
-    id
-  };
-  
   try {
     // Try OpenLibrary first
     try {
       return await getOpenLibraryBookDetails(id);
     } catch (error) {
       console.log('OpenLibrary fetch failed, trying Google Books');
-      // Continue with partial data if we have any
-      if (error instanceof Error && error.message !== 'Work not found') {
-        // Preserve any partial data we might have
-      }
+      // Fall through to next API
     }
     
     // Try Google Books
     try {
-      // If we have an OL ID, convert it to a search term for Google Books
-      if (id.startsWith('OL')) {
-        // Try to extract title or author from the ID or use general search
-        const searchParam = id.replace(/OL|W/g, '').replace(/\d+/g, ' book ').trim();
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        const searchResponse = await fetch(
-          `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchParam)}&maxResults=1`,
-          { signal: controller.signal }
-        );
-        clearTimeout(timeoutId);
-        
-        if (searchResponse.ok) {
-          const searchData = await searchResponse.json();
-          if (searchData.items && searchData.items.length > 0) {
-            return await getGoogleBookDetails(searchData.items[0].id);
-          }
-        }
-      } else if (!id.startsWith('OL')) {
-        // Direct Google Books ID
-        return await getGoogleBookDetails(id);
+      const googleId = id.startsWith('OL') ? null : id;
+      if (googleId) {
+        return await getGoogleBookDetails(googleId);
       }
-      
-      throw new Error('Google Books search failed');
     } catch (error) {
       console.log('Google Books fetch failed');
-      
-      // Try to incorporate any partial data we gathered
-      if (Object.keys(partialResult).length > 1) {
-        const placeholderUrl = createPlaceholderImage(partialResult.title || 'Book');
-        return {
-          id,
-          title: partialResult.title || 'Book Information',
-          author: partialResult.author || 'Unknown Author',
-          description: partialResult.description || 'Book information could not be fully retrieved.',
-          cover: partialResult.cover || placeholderUrl,
-          coverUrl: partialResult.coverUrl || placeholderUrl,
-          publishYear: partialResult.publishYear || null
-        };
-      }
+      // Fall through to fallback
     }
     
-    // Last resort fallback with improved visuals
-    let title = 'Book Information';
-    let author = 'Unknown Author';
-    let placeholderImage = createPlaceholderImage('Book');
-    
-    // Try to extract meaningful info from the ID
-    if (id.startsWith('OL')) {
-      title = `Open Library Book`;
-      author = 'Unknown Author';
-    }
-    
+    // Last resort fallback (if everything fails)
     return {
       id,
-      title,
-      author,
-      description: 'Details for this book are currently unavailable. Please try again later.',
-      cover: placeholderImage,
-      coverUrl: placeholderImage,
+      title: 'Book Information Unavailable',
+      author: 'Unknown',
+      description: 'We could not retrieve information for this book at this time. Please try again later.',
+      cover: '/placeholder.svg',
+      coverUrl: '/placeholder.svg',
       publishYear: null
     };
   } catch (error) {
     console.error('All API attempts failed:', error);
     
-    // Return a user-friendly fallback object
-    const placeholderUrl = createPlaceholderImage('Book');
+    // Return a graceful fallback object
     return {
       id,
-      title: 'Book Information',
-      author: 'Unknown Author',
-      description: 'Details for this book are currently unavailable. Please try again later.',
-      cover: placeholderUrl,
-      coverUrl: placeholderUrl,
+      title: 'Book Information Unavailable',
+      author: 'Unknown',
+      description: 'We could not retrieve information for this book at this time. Please try again later.',
+      cover: '/placeholder.svg',
+      coverUrl: '/placeholder.svg',
       publishYear: null
     };
-  }
-}
-
-// Enhanced placeholder image creator with better aesthetics
-export function createPlaceholderImage(title: string = 'Book', author: string = ''): string {
-  // Generate a soft, readable background color based on title
-  const getColorFromString = (str: string): string => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    // Use pastel colors for better aesthetics
-    const hue = ((hash & 0xFFFFFF) % 360);
-    return `hsl(${hue}, 70%, 80%)`;
-  };
-  
-  const bgColor = getColorFromString(title);
-  const text = author ? `${title} by ${author}` : title;
-  
-  // Try to use a more visually appealing placeholder
-  try {
-    // First attempt to use a nicer placeholder service
-    return `https://placehold.co/300x450/${bgColor.replace('#', '')}/333333?text=${encodeURIComponent(text.substring(0, 30))}`;
-  } catch (error) {
-    // Fallback to via.placeholder
-    return `https://via.placeholder.com/300x450/${bgColor.replace('#', '')}/333333?text=${encodeURIComponent(text.substring(0, 30))}`;
   }
 }
