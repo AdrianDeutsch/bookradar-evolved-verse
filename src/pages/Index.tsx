@@ -6,12 +6,13 @@ import BookOfTheDay from '@/components/books/BookOfTheDay';
 import BookCard from '@/components/books/BookCard';
 import SearchBar from '@/components/search/SearchBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Book } from 'lucide-react';
 
 const Index = () => {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Sample data - in a real app, this would come from an API
+  // Verified sample data with all required fields
   const recentBooks = [
     {
       id: '1',
@@ -82,30 +83,42 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="space-y-10">
-        <div className="flex flex-col items-center space-y-3 pt-4 max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-center">BookRadar</h1>
-          <p className="text-muted-foreground text-center">
+      <div className="space-y-12 relative">
+        {/* App header with improved centered logo and spacing */}
+        <div className="flex flex-col items-center space-y-6 pt-12 md:pt-16 pb-4 max-w-4xl mx-auto">
+          <div className="flex items-center space-x-3 animate-fade-in">
+            <Book className="h-8 w-8 text-bookradar-primary" />
+            <h1 className="text-3xl md:text-4xl font-bold">BookRadar</h1>
+          </div>
+          <p className="text-muted-foreground text-center px-4 max-w-xl animate-fade-in">
             {t('language') === 'de' 
               ? 'Deine intelligente Lese-App mit sozialen Features und Gamification'
               : 'Your intelligent reading app with social features and gamification'}
           </p>
         </div>
 
-        <div className="max-w-2xl mx-auto mt-8">
+        {/* Search bar with increased spacing */}
+        <div className="max-w-2xl mx-auto px-4 pt-4 animate-fade-in">
           <SearchBar onSearch={handleSearch} />
         </div>
 
-        <div className="space-y-10 mt-12">
-          <BookOfTheDay />
+        {/* Main content with better spacing */}
+        <div className="space-y-24 mt-12 px-4">
+          <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
+            <BookOfTheDay />
+          </div>
 
-          <div className="mt-12 animate-fade-in">
+          <div className="animate-fade-in" style={{ animationDelay: "0.4s" }}>
             <Tabs defaultValue="recommended">
-              <TabsList className="mx-auto flex justify-center mb-4">
-                <TabsTrigger value="recommended">Empfehlungen</TabsTrigger>
-                <TabsTrigger value="recent">Kürzlich hinzugefügt</TabsTrigger>
+              <TabsList className="mx-auto flex justify-center mb-8">
+                <TabsTrigger value="recommended">
+                  {t('language') === 'de' ? 'Empfehlungen' : 'Recommended'}
+                </TabsTrigger>
+                <TabsTrigger value="recent">
+                  {t('language') === 'de' ? 'Kürzlich hinzugefügt' : 'Recently Added'}
+                </TabsTrigger>
               </TabsList>
-              <TabsContent value="recommended" className="pt-4">
+              <TabsContent value="recommended" className="pt-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {recommendedBooks.map(book => (
                     <BookCard
@@ -119,7 +132,7 @@ const Index = () => {
                   ))}
                 </div>
               </TabsContent>
-              <TabsContent value="recent" className="pt-4">
+              <TabsContent value="recent" className="pt-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {recentBooks.map(book => (
                     <BookCard
