@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Book, BookOpen, Heart, BookmarkPlus, Share2 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
@@ -21,6 +21,14 @@ const BookCard = ({ id, title, author, coverUrl, rating }: BookCardProps) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  // Track image loading errors for analytics
+  useEffect(() => {
+    if (imageError) {
+      // Log this event to analytics
+      console.log('Image failed to load despite filtering:', { id, title, coverUrl });
+    }
+  }, [imageError, id, title, coverUrl]);
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.preventDefault();
