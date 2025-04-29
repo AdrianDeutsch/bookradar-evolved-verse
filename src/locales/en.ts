@@ -124,6 +124,6 @@ export const en = {
   clearFilters: 'Clear Filters',
   noResultsFound: 'No results found',
   tryDifferentSearch: 'Try a different search term or change your filters',
-  changeLanguage: 'Change Language',
+  // Removed duplicate property
   todayGoal: 'Today\'s Goal'
 };

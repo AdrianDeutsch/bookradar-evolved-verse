@@ -124,6 +124,6 @@ export const de = {
   clearFilters: 'Filter zurücksetzen',
   noResultsFound: 'Keine Ergebnisse gefunden',
   tryDifferentSearch: 'Versuche es mit einem anderen Suchbegriff oder andere Filter',
-  changeLanguage: 'Sprache ändern',
+  // Removed duplicate property
   todayGoal: 'Tagesziel'
 };
