@@ -56,23 +56,14 @@ const BookDetails = () => {
     );
   }
 
-  // Determine if we have essential book data
-  const hasEssentialData = book && (book.title && book.author);
-  const hasCover = book && (book.coverUrl || book.cover);
-  const hasPartialData = book && (book.title || book.author || hasCover);
+  // More refined error handling - even if we have an error, we might still have partial book data
+  // We'll show what we have instead of just an error message
+  const hasPartialData = book && (book.title || book.coverUrl || book.cover || book.author);
 
-  // If we have no data at all, show friendly error message
-  if ((!book && !hasPartialData) || (error && !hasPartialData)) {
+  if ((error || !book) && !hasPartialData) {
     return (
       <Layout>
         <div className="max-w-4xl mx-auto px-4 py-12 space-y-6">
-          <div className="mb-6">
-            <Link to="/" className="flex items-center text-muted-foreground hover:text-foreground transition-colors">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {t('language') === 'de' ? 'Zurück zur Startseite' : 'Back to Home'}
-            </Link>
-          </div>
-          
           <div className="text-center py-12 space-y-6">
             <BookIcon className="h-16 w-16 mx-auto text-muted-foreground" />
             <div>
@@ -127,40 +118,20 @@ const BookDetails = () => {
             {(displayBook.cover || displayBook.coverUrl) ? (
               <img 
                 src={displayBook.cover || displayBook.coverUrl || '/placeholder.svg'} 
-                alt={displayBook.title || (t('language') === 'de' ? 'Buchcover' : 'Book cover')}
+                alt={displayBook.title || t('language') === 'de' ? 'Buchcover' : 'Book cover'}
                 onError={(e) => {
                   e.currentTarget.src = '/placeholder.svg';
                   e.currentTarget.onerror = null;
-                  console.log('Cover image failed to load:', { id: displayBook.id, title: displayBook.title });
                 }}
                 className="w-full rounded-lg shadow-lg object-cover aspect-[2/3]"
               />
             ) : (
-              <div 
-                className="w-full aspect-[2/3] rounded-lg flex items-center justify-center p-4 text-center"
-                style={{ 
-                  backgroundColor: displayBook.title 
-                    ? `hsl(${displayBook.title.length * 5 % 360}, 70%, 80%)` 
-                    : 'hsl(200, 70%, 80%)'
-                }}
-              >
-                <div className="flex flex-col items-center">
-                  <BookIcon className="h-16 w-16 text-muted-foreground mb-4" />
-                  {displayBook.title && (
-                    <span className="font-medium text-foreground text-center">
-                      {displayBook.title.length > 50 
-                        ? displayBook.title.substring(0, 50) + '...' 
-                        : displayBook.title}
-                    </span>
-                  )}
-                </div>
+              <div className="w-full aspect-[2/3] bg-muted rounded-lg flex items-center justify-center">
+                <BookIcon className="h-16 w-16 text-muted-foreground" />
               </div>
             )}
             <div className="flex gap-2">
-              <Button 
-                className="flex-1" 
-                disabled={!hasEssentialData}
-              >
+              <Button className="flex-1" disabled={!displayBook.title}>
                 {t('startReading')}
               </Button>
             </div>
