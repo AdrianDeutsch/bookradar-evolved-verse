@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +14,7 @@ import Statistics from "./pages/Statistics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import BookDetails from "./pages/BookDetails";
+import ReadingMode from "./components/features/ReadingMode";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +34,7 @@ const App = () => (
               <Route path="/statistics" element={<Statistics />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/book/:id" element={<BookDetails />} />
+              <Route path="/book/:id/read" element={<ReadingMode />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

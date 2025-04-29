@@ -1,11 +1,12 @@
 
 import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { useLanguage } from '@/context/LanguageContext';
 import { SearchResult, searchBooks } from '@/services/bookService';
 import SearchBar from '@/components/search/SearchBar';
 import BookCard from '@/components/books/BookCard';
-import { Loader2 } from 'lucide-react';
+import { Loader2, SlidersHorizontal, BookOpen } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -13,35 +14,93 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const Search = () => {
-  const { t } = useLanguage();
-  const [query, setQuery] = useState('');
+  const { t, language } = useLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  
+  const initialQuery = searchParams.get('q') || '';
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState('relevance');
   const [filter, setFilter] = useState('all');
+  const [yearRange, setYearRange] = useState<[number, number]>([1900, new Date().getFullYear()]);
+  const [showWithCoverOnly, setShowWithCoverOnly] = useState(false);
+  const [activeGenres, setActiveGenres] = useState<string[]>([]);
+
+  const genres = [
+    'fiction', 'non-fiction', 'science-fiction', 'fantasy', 
+    'mystery', 'thriller', 'romance', 'biography', 
+    'history', 'poetry', 'children', 'classic'
+  ];
 
   useEffect(() => {
-    const fetchBooks = async () => {
-      if (!query) {
-        setResults([]);
-        return;
-      }
+    if (initialQuery) {
+      fetchBooks(initialQuery);
+    }
+  }, [initialQuery, sortBy, filter, showWithCoverOnly, yearRange, activeGenres]);
 
-      setLoading(true);
-      try {
-        const books = await searchBooks({ query, limit: 20 });
-        setResults(books);
-      } catch (error) {
-        console.error('Error searching books:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchBooks = async (searchQuery: string) => {
+    if (!searchQuery) {
+      setResults([]);
+      return;
+    }
 
-    fetchBooks();
-  }, [query]);
+    setLoading(true);
+    try {
+      let books = await searchBooks({ 
+        query: searchQuery,
+        sortBy,
+        limit: 40
+      });
+
+      // Apply client-side filtering
+      if (showWithCoverOnly) {
+        books = books.filter(book => book.coverUrl !== null);
+      }
+      
+      if (yearRange && yearRange[0] !== 1900 || yearRange[1] !== new Date().getFullYear()) {
+        books = books.filter(book => 
+          book.publishYear && 
+          book.publishYear >= yearRange[0] && 
+          book.publishYear <= yearRange[1]
+        );
+      }
+      
+      if (activeGenres.length > 0) {
+        // This is a simplification - in reality you'd need better genre matching
+        books = books.filter(book => {
+          const description = book.description?.toLowerCase() || '';
+          const title = book.title.toLowerCase();
+          return activeGenres.some(genre => 
+            description.includes(genre) || title.includes(genre)
+          );
+        });
+      }
+      
+      setResults(books);
+    } catch (error) {
+      console.error('Error searching books:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Sort and filter results
   const processedResults = [...results]
@@ -60,6 +119,28 @@ const Search = () => {
 
   const handleSearch = (searchQuery: string) => {
     setQuery(searchQuery);
+    if (searchQuery.trim()) {
+      setSearchParams({ q: searchQuery });
+    } else {
+      setSearchParams({});
+      setResults([]);
+    }
+  };
+
+  const handleGenreToggle = (genre: string) => {
+    if (activeGenres.includes(genre)) {
+      setActiveGenres(activeGenres.filter(g => g !== genre));
+    } else {
+      setActiveGenres([...activeGenres, genre]);
+    }
+  };
+
+  const clearFilters = () => {
+    setSortBy('relevance');
+    setFilter('all');
+    setYearRange([1900, new Date().getFullYear()]);
+    setShowWithCoverOnly(false);
+    setActiveGenres([]);
   };
 
   return (
@@ -74,7 +155,7 @@ const Search = () => {
           </p>
           
           <div className="max-w-3xl">
-            <SearchBar onSearch={handleSearch} />
+            <SearchBar onSearch={handleSearch} initialQuery={query} />
           </div>
 
           {query && (
@@ -107,6 +188,124 @@ const Search = () => {
                   </SelectContent>
                 </Select>
               </div>
+              
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <SlidersHorizontal className="h-4 w-4" />
+                    {language === 'de' ? 'Erweiterte Filter' : 'Advanced Filters'}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle>{language === 'de' ? 'Erweiterte Filter' : 'Advanced Filters'}</SheetTitle>
+                    <SheetDescription>
+                      {language === 'de' 
+                        ? 'Verfeinere deine Suche mit diesen Optionen'
+                        : 'Refine your search with these options'}
+                    </SheetDescription>
+                  </SheetHeader>
+                  
+                  <div className="py-6 space-y-6">
+                    <div className="space-y-2">
+                      <h3 className="font-medium text-sm">
+                        {language === 'de' ? 'Erscheinungsjahr' : 'Publication Year'}
+                      </h3>
+                      <div className="flex justify-between text-xs text-muted-foreground mb-2">
+                        <span>{yearRange[0]}</span>
+                        <span>{yearRange[1]}</span>
+                      </div>
+                      <Slider
+                        value={yearRange}
+                        min={1800}
+                        max={new Date().getFullYear()}
+                        step={1}
+                        onValueChange={(value) => setYearRange(value as [number, number])}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="with-cover" 
+                          checked={showWithCoverOnly} 
+                          onCheckedChange={() => setShowWithCoverOnly(!showWithCoverOnly)}
+                        />
+                        <Label htmlFor="with-cover">
+                          {language === 'de' ? 'Nur Bücher mit Cover' : 'Only books with cover'}
+                        </Label>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <h3 className="font-medium text-sm">
+                        {language === 'de' ? 'Genres' : 'Genres'}
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {genres.map(genre => (
+                          <Badge 
+                            key={genre}
+                            variant={activeGenres.includes(genre) ? "default" : "outline"}
+                            className="cursor-pointer"
+                            onClick={() => handleGenreToggle(genre)}
+                          >
+                            {genre}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      variant="secondary" 
+                      className="w-full mt-4"
+                      onClick={clearFilters}
+                    >
+                      {language === 'de' ? 'Filter zurücksetzen' : 'Clear Filters'}
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+              
+              {(activeGenres.length > 0 || 
+                showWithCoverOnly || 
+                yearRange[0] !== 1900 || 
+                yearRange[1] !== new Date().getFullYear()) && (
+                <div className="flex flex-wrap gap-1">
+                  {activeGenres.map(genre => (
+                    <Badge key={genre} variant="secondary" className="gap-1">
+                      {genre}
+                      <button 
+                        className="ml-1 text-xs" 
+                        onClick={() => handleGenreToggle(genre)}
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  ))}
+                  {showWithCoverOnly && (
+                    <Badge variant="secondary" className="gap-1">
+                      {language === 'de' ? 'Mit Cover' : 'With Cover'}
+                      <button 
+                        className="ml-1 text-xs" 
+                        onClick={() => setShowWithCoverOnly(false)}
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  )}
+                  {(yearRange[0] !== 1900 || yearRange[1] !== new Date().getFullYear()) && (
+                    <Badge variant="secondary" className="gap-1">
+                      {yearRange[0]} - {yearRange[1]}
+                      <button 
+                        className="ml-1 text-xs" 
+                        onClick={() => setYearRange([1900, new Date().getFullYear()])}
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -137,13 +336,31 @@ const Search = () => {
                 ))}
               </div>
             ) : query ? (
-              <div className="py-12 text-center">
-                <p className="text-muted-foreground">
-                  {t('language') === 'de'
-                    ? 'Keine Ergebnisse gefunden. Versuche es mit einem anderen Suchbegriff.'
-                    : 'No results found. Try a different search term.'}
-                </p>
-              </div>
+              <Card className="text-center py-12">
+                <CardHeader>
+                  <div className="mx-auto rounded-full bg-muted p-3 w-12 h-12 flex items-center justify-center">
+                    <BookOpen className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <CardTitle className="mt-4">
+                    {language === 'de'
+                      ? 'Keine Ergebnisse gefunden'
+                      : 'No results found'}
+                  </CardTitle>
+                  <CardDescription>
+                    {language === 'de'
+                      ? 'Versuche es mit einem anderen Suchbegriff oder andere Filter'
+                      : 'Try a different search term or change your filters'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    variant="outline"
+                    onClick={clearFilters}
+                  >
+                    {language === 'de' ? 'Filter zurücksetzen' : 'Clear filters'}
+                  </Button>
+                </CardContent>
+              </Card>
             ) : null}
           </>
         )}

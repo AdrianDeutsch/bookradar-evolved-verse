@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useLanguage } from '@/context/LanguageContext';
-import { Clock, Calendar, ExternalLink, BookIcon } from 'lucide-react';
+import { Clock, ExternalLink, BookIcon, RefreshCcw } from 'lucide-react';
 import { fetchBookOfTheDay, getBookDetails } from '@/services/bookService';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface BookWithQuote {
   id: string;
@@ -16,6 +17,7 @@ interface BookWithQuote {
   quote: string;
 }
 
+// Array of literary quotes about books and reading
 const quotes = [
   'Man sieht nur mit dem Herzen gut. Das Wesentliche ist für die Augen unsichtbar.',
   'Es sind nicht unsere Fähigkeiten, die zeigen, wer wir sind, sondern unsere Entscheidungen.',
@@ -24,16 +26,27 @@ const quotes = [
   'Alles, was wir sehen, ist eine Perspektive, nicht die Wahrheit.',
   'Ein Buch ist wie ein Garten, den man in der Tasche trägt.',
   'Bücher sind die leisesten und beständigsten Freunde, sie sind die zugänglichsten und weisesten Ratgeber und die geduldigsten Lehrer.',
-  'Das Paradies habe ich mir immer als eine Art Bibliothek vorgestellt.'
+  'Das Paradies habe ich mir immer als eine Art Bibliothek vorgestellt.',
+  'A reader lives a thousand lives before he dies. The man who never reads lives only one.',
+  'Books are a uniquely portable magic.',
+  'I do believe something very magical can happen when you read a good book.',
+  'The more that you read, the more things you will know. The more that you learn, the more places you\'ll go.',
+  'Books are mirrors: you only see in them what you already have inside you.',
+  'A book is a dream that you hold in your hand.',
+  'Reading is an exercise in empathy; an exercise in walking in someone else\'s shoes for a while.',
+  'Books are the quietest and most constant of friends; they are the most accessible and wisest of counselors, and the most patient of teachers.'
 ];
 
 const BookOfTheDay = () => {
   const { t, language } = useLanguage();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [book, setBook] = useState<BookWithQuote | null>(null);
   const [nextBookTime, setNextBookTime] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [coverLoaded, setCoverLoaded] = useState(false);
+  const [coverError, setCoverError] = useState(false);
   
   const fetchBook = async (forceRefresh = false) => {
     // Check if today's book is already in localStorage and not forcing refresh
@@ -44,8 +57,16 @@ const BookOfTheDay = () => {
       const savedBook = localStorage.getItem('bookradar-book-of-the-day');
       if (savedBook) {
         try {
-          setBook(JSON.parse(savedBook));
+          const parsedBook = JSON.parse(savedBook);
+          setBook(parsedBook);
           setIsLoading(false);
+          // Pre-load the cover image
+          if (parsedBook.coverUrl) {
+            const img = new Image();
+            img.src = parsedBook.coverUrl;
+            img.onload = () => setCoverLoaded(true);
+            img.onerror = () => setCoverError(true);
+          }
           return;
         } catch (e) {
           // If parsing fails, continue to fetch a new book
@@ -72,6 +93,16 @@ const BookOfTheDay = () => {
         localStorage.setItem('bookradar-book-of-the-day', JSON.stringify(bookWithQuote));
         localStorage.setItem('bookradar-book-of-the-day-date', today);
         
+        // Pre-load the cover image
+        if (newBook.coverUrl) {
+          setCoverLoaded(false);
+          setCoverError(false);
+          const img = new Image();
+          img.src = newBook.coverUrl;
+          img.onload = () => setCoverLoaded(true);
+          img.onerror = () => setCoverError(true);
+        }
+        
         if (forceRefresh) {
           toast({
             title: language === 'de' ? 'Aktualisiert!' : 'Refreshed!',
@@ -90,6 +121,7 @@ const BookOfTheDay = () => {
           : 'Failed to load book of the day',
         variant: 'destructive',
       });
+      setCoverError(true);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -125,7 +157,14 @@ const BookOfTheDay = () => {
 
   const openBookDetails = () => {
     if (book) {
-      window.open(`/book/${book.id}`, '_blank');
+      navigate(`/book/${book.id}`);
+    }
+  };
+
+  // Function to handle start reading button click
+  const handleStartReading = () => {
+    if (book) {
+      navigate(`/book/${book.id}/read`);
     }
   };
 
@@ -171,6 +210,7 @@ const BookOfTheDay = () => {
                 disabled={isRefreshing}
                 className="text-white hover:text-white/80 hover:bg-black/20"
               >
+                <RefreshCcw className="h-4 w-4 mr-2" />
                 {language === 'de' ? 'Neues Buch' : 'New Book'}
               </Button>
             </div>
@@ -178,15 +218,16 @@ const BookOfTheDay = () => {
           
           <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-1">
-              {book.coverUrl ? (
+              {book.coverUrl && !coverError ? (
                 <img
                   src={book.coverUrl}
                   alt={book.title}
-                  className="w-full h-auto rounded-lg shadow-md object-cover"
-                  loading="lazy"
+                  className={`w-full h-auto rounded-lg shadow-md object-cover transition-opacity duration-300 ${coverLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  loading="eager"
+                  onLoad={() => setCoverLoaded(true)}
                   onError={(e) => {
+                    setCoverError(true);
                     e.currentTarget.src = '/placeholder.svg';
-                    e.currentTarget.onerror = null;
                   }}
                 />
               ) : (
@@ -212,13 +253,23 @@ const BookOfTheDay = () => {
                   <span>{nextBookTime}</span>
                 </div>
                 
-                <Button 
-                  className="bg-bookradar-primary hover:bg-bookradar-secondary flex gap-2 items-center"
-                  onClick={openBookDetails}
-                >
-                  {t('moreInfo')}
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline"
+                    className="flex gap-2 items-center"
+                    onClick={handleStartReading}
+                  >
+                    {language === 'de' ? 'Lesen' : 'Read'}
+                  </Button>
+                  
+                  <Button 
+                    className="bg-bookradar-primary hover:bg-bookradar-secondary flex gap-2 items-center"
+                    onClick={openBookDetails}
+                  >
+                    {t('moreInfo')}
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
