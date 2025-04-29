@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Search as SearchIcon, X, BookOpen } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -18,9 +18,8 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
   
-  const debouncedQuery = useDebounce(query, 300);
+  const debouncedQuery = useDebounce(query, 500);
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -31,12 +30,7 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
 
       setIsLoading(true);
       try {
-        const results = await searchBooks({ 
-          query: debouncedQuery, 
-          limit: 5,
-          sortBy: "title" 
-        });
-        
+        const results = await searchBooks({ query: debouncedQuery, limit: 5 });
         setSuggestions(results);
       } catch (error) {
         console.error('Error fetching suggestions:', error);
@@ -50,15 +44,13 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
 
   useEffect(() => {
     // Hide suggestions when clicking outside
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
+    const handleClickOutside = () => {
+      setShowSuggestions(false);
     };
     
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleClickOutside);
     };
   }, []);
 
@@ -87,16 +79,8 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
     setShowSuggestions(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      onSearch(query);
-      setShowSuggestions(false);
-    }
-  };
-
   return (
-    <div className="relative" ref={searchRef} onClick={(e) => e.stopPropagation()}>
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
       <form onSubmit={handleSubmit} className="relative">
         <div className="relative flex items-center">
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -105,7 +89,6 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
             placeholder={t('searchPlaceholder')}
             value={query}
             onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
             className="pl-10 pr-10 py-6 w-full"
             aria-label={t('search')}
             onFocus={() => setShowSuggestions(query.length >= 2)}
@@ -143,14 +126,10 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
                       <img 
                         src={suggestion.coverUrl} 
                         alt={suggestion.title} 
-                        className="h-12 w-10 object-cover rounded"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://placehold.co/200x300/e2e8f0/64748b?text=No+Image';
-                        }}
+                        className="h-10 w-8 object-cover"
                       />
                     ) : (
-                      <div className="h-12 w-10 bg-muted flex items-center justify-center rounded">
+                      <div className="h-10 w-8 bg-muted flex items-center justify-center">
                         <BookOpen className="h-4 w-4 text-muted-foreground" />
                       </div>
                     )}

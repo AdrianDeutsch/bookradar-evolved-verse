@@ -1,77 +1,154 @@
 
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useLanguage } from '@/context/LanguageContext';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Book, Calendar, Star, Smile, HelpCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
+import { useLanguage } from '@/context/LanguageContext';
+import BookOfTheDay from '@/components/books/BookOfTheDay';
+import BookCard from '@/components/books/BookCard';
+import SearchBar from '@/components/search/SearchBar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Book } from 'lucide-react';
 
 const Index = () => {
-  const navigate = useNavigate();
   const { t } = useLanguage();
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Sample data - in a real app, this would come from an API
+  const recentBooks = [
+    {
+      id: '1',
+      title: 'Der Alchimist',
+      author: 'Paulo Coelho',
+      coverUrl: 'https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1654371463i/18144590.jpg',
+      rating: 4.5
+    },
+    {
+      id: '2',
+      title: 'Harry Potter und der Stein der Weisen',
+      author: 'J.K. Rowling',
+      coverUrl: 'https://m.media-amazon.com/images/I/51LiAbzDSxL._SY445_SX342_.jpg',
+      rating: 4.8
+    },
+    {
+      id: '3',
+      title: 'Der kleine Prinz',
+      author: 'Antoine de Saint-Exupéry',
+      coverUrl: 'https://m.media-amazon.com/images/I/41bdH6Y3MbL._SY445_SX342_.jpg',
+      rating: 4.7
+    },
+    {
+      id: '4',
+      title: 'Die unendliche Geschichte',
+      author: 'Michael Ende',
+      coverUrl: 'https://m.media-amazon.com/images/I/51tRHbMpvnL.jpg',
+      rating: 4.6
+    }
+  ];
 
-  const renderFeatureCards = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-      {[
-        { 
-          title: t('language') === 'de' ? 'Stimmungs-Empfehlungen' : 'Mood Matching',
-          description: t('language') === 'de' ? 'Finde Bücher passend zu deiner Stimmung' : 'Find books matching your mood',
-          icon: <Smile className="h-8 w-8 text-bookradar-primary" />,
-          href: "/recommendations"
-        },
-        {
-          title: t('language') === 'de' ? 'Buch-Quiz' : 'Book Quiz',
-          description: t('language') === 'de' ? 'Teste dein Buchwissen' : 'Test your book knowledge',
-          icon: <HelpCircle className="h-8 w-8 text-bookradar-primary" />,
-          href: "/quiz"
-        },
-        {
-          title: t('language') === 'de' ? 'Lesestatistiken' : 'Reading Statistics',
-          description: t('language') === 'de' ? 'Verfolge deinen Lesefortschritt' : 'Track your reading progress',
-          icon: <Star className="h-8 w-8 text-bookradar-primary" />,
-          href: "/statistics"
-        },
-        {
-          title: t('language') === 'de' ? 'Buch-Kalender' : 'Book Calendar',
-          description: t('language') === 'de' ? 'Entdecke neue Bücher jeden Tag' : 'Discover new books every day',
-          icon: <Calendar className="h-8 w-8 text-bookradar-primary" />,
-          href: "/calendar"
-        }
-      ].map((feature, index) => (
-        <Card key={index} className="hover:shadow-md transition-all duration-300">
-          <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
-            <div className="rounded-full bg-primary/10 p-3">
-              {feature.icon}
-            </div>
-            <h3 className="font-semibold">{feature.title}</h3>
-            <p className="text-sm text-muted-foreground">{feature.description}</p>
-            <Button 
-              variant="outline" 
-              className="mt-2 w-full" 
-              onClick={() => navigate(feature.href)}
-            >
-              {t('explore')}
-            </Button>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
+  const recommendedBooks = [
+    {
+      id: '5',
+      title: 'Der Herr der Ringe',
+      author: 'J.R.R. Tolkien',
+      coverUrl: 'https://m.media-amazon.com/images/I/51JWV1FxXdL._SY445_SX342_.jpg',
+      rating: 4.9
+    },
+    {
+      id: '6',
+      title: 'Die Verwandlung',
+      author: 'Franz Kafka',
+      coverUrl: 'https://m.media-amazon.com/images/I/81vAAxPWkTL._AC_UF1000,1000_QL80_.jpg',
+      rating: 4.3
+    },
+    {
+      id: '7',
+      title: 'Pride and Prejudice',
+      author: 'Jane Austen',
+      coverUrl: 'https://m.media-amazon.com/images/I/71Q1tPupKjL._AC_UF1000,1000_QL80_.jpg',
+      rating: 4.7
+    },
+    {
+      id: '8',
+      title: '1984',
+      author: 'George Orwell',
+      coverUrl: 'https://m.media-amazon.com/images/I/71kxa1-0mfL._AC_UF1000,1000_QL80_.jpg',
+      rating: 4.8
+    }
+  ];
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    // In a real app, we would perform a search request here
+    console.log('Searching for:', query);
+  };
 
   return (
     <Layout>
-      <div className="space-y-8">
-        <section>
-          <h1 className="text-3xl font-bold mb-6">BookRadar</h1>
-          <p className="text-lg text-muted-foreground mb-8">
+      <div className="space-y-12 relative">
+        {/* App header with centered logo and improved spacing */}
+        <div className="flex flex-col items-center space-y-5 pt-10 md:pt-12 max-w-4xl mx-auto">
+          <div className="flex items-center space-x-3 animate-fade-in">
+            <Book className="h-8 w-8 text-bookradar-primary" />
+            <h1 className="text-3xl md:text-4xl font-bold">BookRadar</h1>
+          </div>
+          <p className="text-muted-foreground text-center px-4 max-w-xl animate-fade-in">
             {t('language') === 'de' 
-              ? 'Entdecke neue Bücher und verfolge deinen Lesefortschritt'
-              : 'Discover new books and track your reading progress'}
+              ? 'Deine intelligente Lese-App mit sozialen Features und Gamification'
+              : 'Your intelligent reading app with social features and gamification'}
           </p>
-          
-          {renderFeatureCards()}
-        </section>
+        </div>
+
+        {/* Search bar with increased spacing */}
+        <div className="max-w-2xl mx-auto px-4 pt-2 animate-fade-in">
+          <SearchBar onSearch={handleSearch} />
+        </div>
+
+        {/* Main content with better spacing */}
+        <div className="space-y-20 mt-10 px-4">
+          <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
+            <BookOfTheDay />
+          </div>
+
+          <div className="animate-fade-in" style={{ animationDelay: "0.4s" }}>
+            <Tabs defaultValue="recommended">
+              <TabsList className="mx-auto flex justify-center mb-8">
+                <TabsTrigger value="recommended">
+                  {t('language') === 'de' ? 'Empfehlungen' : 'Recommended'}
+                </TabsTrigger>
+                <TabsTrigger value="recent">
+                  {t('language') === 'de' ? 'Kürzlich hinzugefügt' : 'Recently Added'}
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="recommended" className="pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {recommendedBooks.map(book => (
+                    <BookCard
+                      key={book.id}
+                      id={book.id}
+                      title={book.title}
+                      author={book.author}
+                      coverUrl={book.coverUrl}
+                      rating={book.rating}
+                    />
+                  ))}
+                </div>
+              </TabsContent>
+              <TabsContent value="recent" className="pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {recentBooks.map(book => (
+                    <BookCard
+                      key={book.id}
+                      id={book.id}
+                      title={book.title}
+                      author={book.author}
+                      coverUrl={book.coverUrl}
+                      rating={book.rating}
+                    />
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
       </div>
     </Layout>
   );
