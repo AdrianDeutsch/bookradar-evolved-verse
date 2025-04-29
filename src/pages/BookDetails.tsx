@@ -1,5 +1,5 @@
 
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Book as BookIcon, Calendar, User, ArrowLeft } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
@@ -8,10 +8,13 @@ import { getBookDetails } from '@/services/bookService';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 const BookDetails = () => {
   const { id } = useParams();
   const { t } = useLanguage();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Improved query configuration with better retry logic
   const { data: book, isLoading, error } = useQuery({
@@ -20,7 +23,22 @@ const BookDetails = () => {
     enabled: !!id,
     retry: 3, // Increase retry attempts
     retryDelay: attempt => Math.min(attempt > 1 ? 2000 : 1000, 30000), // Progressive retry with backoff
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  const handleStartReading = () => {
+    if (id) {
+      navigate(`/book/${id}/read`);
+    } else {
+      toast({
+        title: t('error'),
+        description: t('language') === 'de'
+          ? 'Buch-ID fehlt. Kann Lesemodus nicht starten.'
+          : 'Book ID missing. Cannot start reading mode.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   if (isLoading) {
     // Enhanced loading state with skeleton UI
@@ -118,7 +136,7 @@ const BookDetails = () => {
             {(displayBook.cover || displayBook.coverUrl) ? (
               <img 
                 src={displayBook.cover || displayBook.coverUrl || '/placeholder.svg'} 
-                alt={displayBook.title || t('language') === 'de' ? 'Buchcover' : 'Book cover'}
+                alt={displayBook.title || (t('language') === 'de' ? 'Buchcover' : 'Book cover')}
                 onError={(e) => {
                   e.currentTarget.src = '/placeholder.svg';
                   e.currentTarget.onerror = null;
@@ -131,7 +149,11 @@ const BookDetails = () => {
               </div>
             )}
             <div className="flex gap-2">
-              <Button className="flex-1" disabled={!displayBook.title}>
+              <Button 
+                className="flex-1" 
+                onClick={handleStartReading}
+                disabled={!displayBook.title}
+              >
                 {t('startReading')}
               </Button>
             </div>
