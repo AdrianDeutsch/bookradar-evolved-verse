@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/components/ui/use-toast';
+import { storage } from '@/utils/localStorage';
 
 interface BookCardProps {
   id: string;
@@ -18,41 +19,104 @@ interface BookCardProps {
 
 const BookCard = ({ id, title, author, coverUrl, rating }: BookCardProps) => {
   const { t } = useLanguage();
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [isInWishlist, setIsInWishlist] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(() => {
+    const favorites = storage.get<string[]>('bookradar-favorites', []);
+    return favorites.includes(id);
+  });
+  const [isInWishlist, setIsInWishlist] = useState(() => {
+    const wishlist = storage.get<string[]>('bookradar-wishlist', []);
+    return wishlist.includes(id);
+  });
   const [imageError, setImageError] = useState(false);
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.preventDefault();
-    setIsFavorite(!isFavorite);
+    const newIsFavorite = !isFavorite;
+    setIsFavorite(newIsFavorite);
+    
+    const favorites = storage.get<string[]>('bookradar-favorites', []);
+    if (newIsFavorite) {
+      storage.set('bookradar-favorites', [...favorites, id]);
+    } else {
+      storage.set('bookradar-favorites', favorites.filter(bookId => bookId !== id));
+    }
+    
     toast({
-      title: !isFavorite ? t('success') : t('success'),
-      description: !isFavorite 
+      title: newIsFavorite ? t('success') : t('success'),
+      description: newIsFavorite 
         ? `"${title}" ${t('addToFavorites').toLowerCase()}` 
-        : `"${title}" aus Favoriten entfernt`,
+        : `"${title}" ${t('language') === 'de' ? 'aus Favoriten entfernt' : 'removed from favorites'}`,
       duration: 3000,
     });
   };
 
   const toggleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
-    setIsInWishlist(!isInWishlist);
+    const newIsInWishlist = !isInWishlist;
+    setIsInWishlist(newIsInWishlist);
+    
+    const wishlist = storage.get<string[]>('bookradar-wishlist', []);
+    if (newIsInWishlist) {
+      storage.set('bookradar-wishlist', [...wishlist, id]);
+    } else {
+      storage.set('bookradar-wishlist', wishlist.filter(bookId => bookId !== id));
+    }
+    
     toast({
       title: t('success'),
-      description: !isInWishlist 
+      description: newIsInWishlist 
         ? `"${title}" ${t('addToWishlist').toLowerCase()}` 
-        : `"${title}" aus Wunschliste entfernt`,
+        : `"${title}" ${t('language') === 'de' ? 'aus Wunschliste entfernt' : 'removed from wishlist'}`,
       duration: 3000,
     });
   };
 
   const shareBook = (e: React.MouseEvent) => {
     e.preventDefault();
-    // Implement sharing functionality
+    
+    // Try to use Web Share API if available
+    if (navigator.share) {
+      navigator.share({
+        title: title,
+        text: `${t('checkOutBook')}: ${title} ${t('by')} ${author}`,
+        url: window.location.origin + `/book/${id}`
+      }).catch((error) => {
+        console.log('Error sharing', error);
+        showShareToast();
+      });
+    } else {
+      showShareToast();
+    }
+  };
+  
+  const showShareToast = () => {
     toast({
       title: t('share'),
       description: `${t('shareBook')}: "${title}"`,
       duration: 3000,
+    });
+  };
+
+  const startReading = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    // Store the book in reading mode
+    storage.set('bookradar-reading-book', {
+      id,
+      title,
+      author,
+      coverUrl,
+      currentPage: storage.get(`bookradar-reading-progress-${id}`, 0),
+      totalPages: Math.floor(Math.random() * 300) + 100 // Random page count for demo
+    });
+    
+    // Navigate to reading mode
+    window.location.href = `/reading/${id}`;
+    
+    toast({
+      title: t('startReading'),
+      description: `${t('language') === 'de' ? 'Öffne' : 'Opening'} "${title}"`,
+      duration: 2000,
     });
   };
 
@@ -151,7 +215,7 @@ const BookCard = ({ id, title, author, coverUrl, rating }: BookCardProps) => {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="hover:text-bookradar-primary">
+                <Button variant="ghost" size="icon" onClick={startReading} className="hover:text-bookradar-primary">
                   <BookOpen className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
