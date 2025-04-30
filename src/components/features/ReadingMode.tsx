@@ -28,6 +28,156 @@ interface BookContent {
   author: string;
 }
 
+// Function to fetch book content from Gutendex (Project Gutenberg API)
+const fetchGutendexContent = async (title: string, author: string): Promise<string | null> => {
+  try {
+    // Format search query - Gutendex searches in title and author
+    const searchQuery = encodeURIComponent(`${title} ${author}`.trim());
+    const response = await fetch(`https://gutendex.com/books/?search=${searchQuery}`);
+    
+    if (!response.ok) {
+      console.error('Gutendex API error:', response.status);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    // Check if we have any results
+    if (!data.results || data.results.length === 0) {
+      console.log('No books found in Gutendex');
+      return null;
+    }
+    
+    // Get the first book result
+    const book = data.results[0];
+    
+    // Check if the book has text formats
+    if (book.formats && book.formats['text/html']) {
+      try {
+        // Try to fetch the actual content
+        const contentResponse = await fetch(book.formats['text/html']);
+        
+        if (!contentResponse.ok) {
+          console.error('Failed to fetch book content');
+          return null;
+        }
+        
+        const htmlContent = await contentResponse.text();
+        // Extract just the body content and clean it up a bit
+        return `
+          <h1>${book.title}</h1>
+          <h2>by ${book.authors.map(a => a.name).join(', ')}</h2>
+          <div class="chapter">
+            ${extractReadableContent(htmlContent)}
+          </div>
+        `;
+      } catch (error) {
+        console.error('Error fetching book content:', error);
+        return null;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error with Gutendex API:', error);
+    return null;
+  }
+};
+
+// Helper function to extract readable content from HTML
+const extractReadableContent = (html: string): string => {
+  // Simple extraction - in a real app you'd use a proper HTML parser
+  let content = html;
+  
+  // Try to extract just the main content
+  const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch && bodyMatch[1]) {
+    content = bodyMatch[1];
+  }
+  
+  // Remove scripts and styles
+  content = content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  content = content.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  
+  // Get just the first few paragraphs to show as a sample
+  const paragraphs = content.match(/<p[^>]*>[\s\S]*?<\/p>/gi);
+  if (paragraphs && paragraphs.length > 0) {
+    // Get first 10 paragraphs or all if less than 10
+    return paragraphs.slice(0, 10).join('\n');
+  }
+  
+  // If we couldn't parse it well, return a shortened version
+  return content.substring(0, 3000) + '...';
+};
+
+// Fallback content generator based on book metadata
+const generateFallbackContent = (title: string, author: string): string => {
+  // Generate some sample content based on the book title and author
+  return `
+    <h1>${title}</h1>
+    <h2>by ${author}</h2>
+    <p class="chapter">CHAPTER I</p>
+    <p>This is a preview of "${title}" by ${author}. The full text is not available in our system at this time.</p>
+    <p>In a real application, this would contain the actual book content from an API or database. For now, we're showing this sample text.</p>
+    <p>You can use the controls below to adjust the font size, line spacing, and toggle dark mode for a better reading experience.</p>
+    <p>Your reading progress will be saved automatically as you navigate through the book.</p>
+  `;
+};
+
+// Function to determine book content based on ID, title, author
+const getBookContent = async (id: string, title: string, author: string): Promise<BookContent> => {
+  let content: string | null = null;
+  
+  // Try to get content from Gutendex API
+  content = await fetchGutendexContent(title, author);
+  
+  // If that fails, try to generate content based on the book ID patterns
+  if (!content) {
+    if (id?.includes('OL')) {
+      // OpenLibrary ID
+      content = `
+        <h1>${title}</h1>
+        <h2>by ${author}</h2>
+        <p class="chapter">CHAPTER I.</p>
+        <p>It was a bright day in April, and the clocks were striking thirteen. Winston Smith, his chin nuzzled into his breast in an effort to escape the vile wind, slipped quickly through the glass doors of Victory Mansions, though not quickly enough to prevent a swirl of gritty dust from entering along with him.</p>
+        <p>The hallway smelt of boiled cabbage and old rag mats. At one end of it a coloured poster, too large for indoor display, had been tacked to the wall. It depicted simply an enormous face, more than a metre wide: the face of a man of about forty-five, with a heavy black moustache and ruggedly handsome features.</p>
+        <p>Winston made for the stairs. It was no use trying the lift. Even at the best of times it was seldom working, and at present the electric current was cut off during daylight hours. It was part of the economy drive in preparation for Hate Week. The flat was seven flights up, and Winston, who was thirty-nine and had a varicose ulcer above his right ankle, went slowly, resting several times on the way.</p>
+      `;
+    } else if (id?.includes('harry') || id?.includes('potter')) {
+      // Harry Potter related
+      content = `
+        <h1>${title}</h1>
+        <h2>by ${author}</h2>
+        <p class="chapter">CHAPTER ONE - THE BOY WHO LIVED</p>
+        <p>Mr. and Mrs. Dursley, of number four, Privet Drive, were proud to say that they were perfectly normal, thank you very much. They were the last people you'd expect to be involved in anything strange or mysterious, because they just didn't hold with such nonsense.</p>
+        <p>Mr. Dursley was the director of a firm called Grunnings, which made drills. He was a big, beefy man with hardly any neck, although he did have a very large mustache. Mrs. Dursley was thin and blonde and had nearly twice the usual amount of neck, which came in very useful as she spent so much of her time craning over garden fences, spying on the neighbors.</p>
+        <p>The Dursleys had a small son called Dudley and in their opinion there was no finer boy anywhere.</p>
+      `;
+    } else {
+      // Default or fallback content
+      content = generateFallbackContent(title, author);
+    }
+  }
+  
+  return {
+    title: title,
+    content: content,
+    author: author
+  };
+};
+
+// Calculate an appropriate number of pages based on content
+const calculateTotalPages = (content: string): number => {
+  if (!content) return 100;
+  
+  // A simple calculation: roughly one page per 1000 characters
+  const contentLength = content.length;
+  const pagesEstimate = Math.max(20, Math.ceil(contentLength / 1000));
+  
+  // Round to nearest 5 for a cleaner number
+  return Math.ceil(pagesEstimate / 5) * 5;
+};
+
 const ReadingMode = () => {
   const { id } = useParams<{ id: string }>();
   const { t, language } = useLanguage();
@@ -90,48 +240,18 @@ const ReadingMode = () => {
           author = bookDetails.author || 'Unknown Author';
         }
 
-        // In a real app, we would fetch the actual book content from an API
-        // Since we don't have that, we'll use the book ID to determine content
-        // This is a more dynamic approach than just showing the same text
-        let content = '';
+        // Fetch appropriate content for this specific book
+        const content = await getBookContent(id || '', title, author);
+        setBookContent(content);
         
-        if (id?.includes('OL')) {
-          // OpenLibrary ID
-          content = `
-            <h1>${title}</h1>
-            <h2>by ${author}</h2>
-            <p class="chapter">CHAPTER I.</p>
-            <p>It was a bright day in April, and the clocks were striking thirteen. Winston Smith, his chin nuzzled into his breast in an effort to escape the vile wind, slipped quickly through the glass doors of Victory Mansions, though not quickly enough to prevent a swirl of gritty dust from entering along with him.</p>
-            <p>The hallway smelt of boiled cabbage and old rag mats. At one end of it a coloured poster, too large for indoor display, had been tacked to the wall. It depicted simply an enormous face, more than a metre wide: the face of a man of about forty-five, with a heavy black moustache and ruggedly handsome features.</p>
-            <p>Winston made for the stairs. It was no use trying the lift. Even at the best of times it was seldom working, and at present the electric current was cut off during daylight hours. It was part of the economy drive in preparation for Hate Week. The flat was seven flights up, and Winston, who was thirty-nine and had a varicose ulcer above his right ankle, went slowly, resting several times on the way.</p>
-          `;
-        } else if (id?.includes('harry') || id?.includes('potter')) {
-          // Harry Potter related
-          content = `
-            <h1>${title}</h1>
-            <h2>by ${author}</h2>
-            <p class="chapter">CHAPTER ONE - THE BOY WHO LIVED</p>
-            <p>Mr. and Mrs. Dursley, of number four, Privet Drive, were proud to say that they were perfectly normal, thank you very much. They were the last people you'd expect to be involved in anything strange or mysterious, because they just didn't hold with such nonsense.</p>
-            <p>Mr. Dursley was the director of a firm called Grunnings, which made drills. He was a big, beefy man with hardly any neck, although he did have a very large mustache. Mrs. Dursley was thin and blonde and had nearly twice the usual amount of neck, which came in very useful as she spent so much of her time craning over garden fences, spying on the neighbors.</p>
-            <p>The Dursleys had a small son called Dudley and in their opinion there was no finer boy anywhere.</p>
-          `;
-        } else {
-          // Default - Alice in Wonderland (with real book ID detection)
-          content = `
-            <h1>${title}</h1>
-            <h2>by ${author}</h2>
-            <p class="chapter">CHAPTER I. Down the Rabbit-Hole</p>
-            <p>Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, 'and what is the use of a book,' thought Alice 'without pictures or conversation?'</p>
-            <p>So she was considering in her own mind (as well as she could, for the hot day made her feel very sleepy and stupid), whether the pleasure of making a daisy-chain would be worth the trouble of getting up and picking the daisies, when suddenly a White Rabbit with pink eyes ran close by her.</p>
-            <p>There was nothing so VERY remarkable in that; nor did Alice think it so VERY much out of the way to hear the Rabbit say to itself, 'Oh dear! Oh dear! I shall be late!' (when she thought it over afterwards, it occurred to her that she ought to have wondered at this, but at the time it all seemed quite natural); but when the Rabbit actually TOOK A WATCH OUT OF ITS WAISTCOAT-POCKET, and looked at it, and then hurried on, Alice started to her feet, for it flashed across her mind that she had never before seen a rabbit with either a waistcoat-pocket, or a watch to take out of it, and burning with curiosity, she ran across the field after it, and fortunately was just in time to see it pop down a large rabbit-hole under the hedge.</p>
-          `;
-        }
-        
-        setBookContent({
-          title: title,
-          content: content,
-          author: author
-        });
+        // Update total pages based on content length
+        const totalPages = calculateTotalPages(content.content);
+        setProgress(prev => ({
+          ...prev,
+          totalPages: totalPages,
+          // Maintain the same percentage but adjust the page number
+          currentPage: Math.max(1, Math.min(Math.round((prev.percentage / 100) * totalPages), totalPages))
+        }));
         
       } catch (error) {
         console.error('Error fetching book content:', error);

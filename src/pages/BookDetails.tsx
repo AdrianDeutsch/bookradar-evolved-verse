@@ -1,7 +1,7 @@
 
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Book as BookIcon, Calendar, User, ArrowLeft } from 'lucide-react';
+import { Loader2, Book as BookIcon, Calendar, User, ArrowLeft, ExternalLink } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { useLanguage } from '@/context/LanguageContext';
 import { getBookDetails } from '@/services/bookService';
@@ -40,6 +40,15 @@ const BookDetails = () => {
     }
   };
 
+  // Generate Amazon search link based on book title and author
+  const generateAmazonLink = (title?: string, author?: string) => {
+    if (!title) return '';
+    const searchQuery = author 
+      ? `${encodeURIComponent(title)}+${encodeURIComponent(author)}`
+      : encodeURIComponent(title);
+    return `https://www.amazon.com/s?k=${searchQuery}`;
+  };
+
   if (isLoading) {
     // Enhanced loading state with skeleton UI
     return (
@@ -55,6 +64,7 @@ const BookDetails = () => {
           <div className="grid md:grid-cols-[300px_1fr] gap-8">
             <div className="space-y-4">
               <Skeleton className="w-full aspect-[2/3] rounded-lg" />
+              <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </div>
             <div className="space-y-6">
@@ -121,6 +131,9 @@ const BookDetails = () => {
     publishYear: null
   };
 
+  // Generate Amazon link for this book
+  const amazonLink = generateAmazonLink(displayBook.title, displayBook.author);
+
   return (
     <Layout>
       <div className="max-w-4xl mx-auto px-4 animate-fade-in">
@@ -148,7 +161,7 @@ const BookDetails = () => {
                 <BookIcon className="h-16 w-16 text-muted-foreground" />
               </div>
             )}
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2">
               <Button 
                 className="flex-1" 
                 onClick={handleStartReading}
@@ -156,6 +169,19 @@ const BookDetails = () => {
               >
                 {t('startReading')}
               </Button>
+              
+              {amazonLink && (
+                <Button 
+                  variant="outline" 
+                  className="flex-1" 
+                  asChild
+                >
+                  <a href={amazonLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center">
+                    {t('language') === 'de' ? 'Kaufen auf Amazon' : 'Buy on Amazon'}
+                    <ExternalLink className="ml-1 h-4 w-4" />
+                  </a>
+                </Button>
+              )}
             </div>
           </div>
 
