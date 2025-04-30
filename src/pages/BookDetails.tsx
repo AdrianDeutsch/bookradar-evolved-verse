@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 
 const BookDetails = () => {
   const { id } = useParams();
@@ -16,8 +18,15 @@ const BookDetails = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Improved query configuration with better retry logic
-  const { data: book, isLoading, error } = useQuery({
+  // Improved query configuration with better retry logic and refetch capabilities
+  const { 
+    data: book, 
+    isLoading, 
+    error, 
+    isError, 
+    refetch, 
+    isRefetching 
+  } = useQuery({
     queryKey: ['book', id],
     queryFn: () => getBookDetails(id as string),
     enabled: !!id,
@@ -25,6 +34,23 @@ const BookDetails = () => {
     retryDelay: attempt => Math.min(attempt > 1 ? 2000 : 1000, 30000), // Progressive retry with backoff
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // Show toast on error but only if it's not during a refetch
+  React.useEffect(() => {
+    if (isError && !isRefetching) {
+      toast({
+        title: t('error'),
+        description: t('language') === 'de' 
+          ? 'Fehler beim Laden der Buchdaten. Versuche erneut.' 
+          : 'Error loading book data. Trying alternative sources.',
+        variant: 'destructive',
+        duration: 5000,
+      });
+      
+      // Try to refetch after showing the error
+      setTimeout(() => refetch(), 1000);
+    }
+  }, [isError, isRefetching, toast, t, refetch]);
 
   const handleStartReading = () => {
     if (id) {
@@ -47,6 +73,17 @@ const BookDetails = () => {
       ? `${encodeURIComponent(title)}+${encodeURIComponent(author)}`
       : encodeURIComponent(title);
     return `https://www.amazon.com/s?k=${searchQuery}`;
+  };
+
+  // Show retry button if loading failed
+  const handleRetry = () => {
+    toast({
+      title: t('language') === 'de' ? 'Versuche erneut' : 'Trying again',
+      description: t('language') === 'de' 
+        ? 'Suche nach alternativen Quellen...' 
+        : 'Searching alternative sources...',
+    });
+    refetch();
   };
 
   if (isLoading) {
@@ -92,6 +129,13 @@ const BookDetails = () => {
     return (
       <Layout>
         <div className="max-w-4xl mx-auto px-4 py-12 space-y-6">
+          <div className="mb-6">
+            <Link to="/" className="flex items-center text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              {t('language') === 'de' ? 'Zurück zur Startseite' : 'Back to Home'}
+            </Link>
+          </div>
+          
           <div className="text-center py-12 space-y-6">
             <BookIcon className="h-16 w-16 mx-auto text-muted-foreground" />
             <div>
@@ -106,14 +150,27 @@ const BookDetails = () => {
                   : 'We could not find any information for this book. Please try again later.'}
               </p>
             </div>
-            <Button 
-              variant="outline"
-              asChild
-            >
-              <Link to="/">
-                {t('language') === 'de' ? 'Zurück zur Startseite' : 'Back to Home'}
-              </Link>
-            </Button>
+            
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button 
+                variant="default"
+                className="flex items-center gap-2"
+                onClick={handleRetry}
+                disabled={isRefetching}
+              >
+                {isRefetching && <Loader2 className="h-4 w-4 animate-spin" />}
+                {t('language') === 'de' ? 'Alternative Quellen prüfen' : 'Try Alternative Sources'}
+              </Button>
+              
+              <Button 
+                variant="outline"
+                asChild
+              >
+                <Link to="/">
+                  {t('language') === 'de' ? 'Zurück zur Startseite' : 'Back to Home'}
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </Layout>
@@ -134,6 +191,22 @@ const BookDetails = () => {
   // Generate Amazon link for this book
   const amazonLink = generateAmazonLink(displayBook.title, displayBook.author);
 
+  // Get a larger cover image if possible (for OpenLibrary covers)
+  const getLargerCoverUrl = (url: string | null) => {
+    if (!url) return null;
+    if (url.includes('covers.openlibrary.org') && url.includes('-M.jpg')) {
+      return url.replace('-M.jpg', '-L.jpg');
+    }
+    return url;
+  };
+
+  // Show a retry button if we have very minimal data
+  const hasMinimalData = displayBook.title === 'Book Information' || 
+                         displayBook.author === 'Unknown Author' ||
+                         !displayBook.description ||
+                         displayBook.description === 'No description available' ||
+                         displayBook.description === 'Details for this book are currently unavailable. Please try again later.';
+
   return (
     <Layout>
       <div className="max-w-4xl mx-auto px-4 animate-fade-in">
@@ -147,20 +220,42 @@ const BookDetails = () => {
         <div className="grid md:grid-cols-[300px_1fr] gap-8">
           <div className="space-y-4">
             {(displayBook.cover || displayBook.coverUrl) ? (
-              <img 
-                src={displayBook.cover || displayBook.coverUrl || '/placeholder.svg'} 
-                alt={displayBook.title || (t('language') === 'de' ? 'Buchcover' : 'Book cover')}
-                onError={(e) => {
-                  e.currentTarget.src = '/placeholder.svg';
-                  e.currentTarget.onerror = null;
-                }}
-                className="w-full rounded-lg shadow-lg object-cover aspect-[2/3]"
-              />
+              <div className="relative">
+                <img 
+                  src={getLargerCoverUrl(displayBook.cover || displayBook.coverUrl) || '/placeholder.svg'} 
+                  alt={displayBook.title || (t('language') === 'de' ? 'Buchcover' : 'Book cover')}
+                  onError={(e) => {
+                    e.currentTarget.src = '/placeholder.svg';
+                    e.currentTarget.onerror = null;
+                  }}
+                  className="w-full rounded-lg shadow-lg object-cover aspect-[2/3]"
+                />
+                
+                {isRefetching && (
+                  <div className="absolute inset-0 bg-black bg-opacity-30 rounded-lg flex items-center justify-center">
+                    <div className="bg-white bg-opacity-80 rounded-full p-3">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="w-full aspect-[2/3] bg-muted rounded-lg flex items-center justify-center">
                 <BookIcon className="h-16 w-16 text-muted-foreground" />
               </div>
             )}
+            
+            {hasMinimalData && !isRefetching && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="w-full flex items-center gap-2 text-xs"
+                onClick={handleRetry}
+              >
+                {t('language') === 'de' ? 'Weitere Details suchen' : 'Search for more details'}
+              </Button>
+            )}
+            
             <div className="flex flex-col gap-2">
               <Button 
                 className="flex-1" 
@@ -222,9 +317,23 @@ const BookDetails = () => {
 
             {error && (
               <div className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">
-                {t('language') === 'de'
-                  ? 'Hinweis: Einige Details zu diesem Buch konnten nicht geladen werden. Die angezeigten Informationen könnten unvollständig sein.'
-                  : 'Note: Some details for this book could not be loaded. The displayed information may be incomplete.'}
+                <div className="flex items-center justify-between">
+                  <div>
+                    {t('language') === 'de'
+                      ? 'Hinweis: Einige Details zu diesem Buch konnten nicht geladen werden. Die angezeigten Informationen könnten unvollständig sein.'
+                      : 'Note: Some details for this book could not be loaded. The displayed information may be incomplete.'}
+                  </div>
+                  {!isRefetching && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRetry}
+                      className="ml-4 text-xs"
+                    >
+                      {t('language') === 'de' ? 'Erneut versuchen' : 'Try again'}
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
           </div>

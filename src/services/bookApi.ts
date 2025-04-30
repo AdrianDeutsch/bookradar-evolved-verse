@@ -32,6 +32,7 @@ export async function getOpenLibraryBookDetails(id: string) {
 
     // Get author details if available
     let authorName = 'Unknown Author';
+    let authorBio = null;
     if (work.authors?.[0]) {
       try {
         const authorKey = work.authors[0].author.key;
@@ -39,6 +40,7 @@ export async function getOpenLibraryBookDetails(id: string) {
         if (authorResponse.ok) {
           const authorData: OpenLibraryAuthor = await authorResponse.json();
           authorName = authorData.name;
+          authorBio = authorData.bio;
         }
       } catch (error) {
         console.log('Failed to fetch author details, using default');
@@ -71,6 +73,7 @@ export async function getOpenLibraryBookDetails(id: string) {
       id,
       title: work.title || 'Unknown Title',
       author: authorName,
+      authorBio: authorBio,
       description: work.description?.toString() || 'No description available',
       cover: coverUrl,
       coverUrl: coverUrl,
@@ -135,6 +138,149 @@ export async function getGoogleBookDetails(id: string): Promise<SearchResult> {
   }
 }
 
+// New function to get book details from Project Gutenberg API (via Gutendex)
+export async function getGutendexBookDetails(query: string): Promise<SearchResult | null> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    // Use the Gutendex API to search for books
+    const response = await fetch(
+      `https://gutendex.com/books/?search=${encodeURIComponent(query)}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) throw new Error('Gutendex API error');
+    
+    const data = await response.json();
+    
+    // Check if we have results
+    if (!data.results || data.results.length === 0) {
+      return null;
+    }
+    
+    // Get the first result
+    const book = data.results[0];
+    
+    // Check for cover images
+    let coverUrl = null;
+    if (book.formats && book.formats['image/jpeg']) {
+      coverUrl = book.formats['image/jpeg'];
+    }
+    
+    // If no cover, use a placeholder
+    if (!coverUrl) {
+      coverUrl = createPlaceholderImage(book.title);
+    }
+    
+    return {
+      id: book.id.toString(),
+      title: book.title || 'Unknown Title',
+      author: book.authors?.length > 0 ? book.authors[0].name : 'Unknown Author',
+      description: `A classic work available on Project Gutenberg. Written by ${book.authors?.length > 0 ? book.authors[0].name : 'an unknown author'}.`,
+      cover: coverUrl,
+      coverUrl: coverUrl,
+      publishYear: book.copyright ? parseInt(book.copyright) : null,
+    };
+  } catch (error) {
+    console.error('Error fetching from Gutendex:', error);
+    return null;
+  }
+}
+
+// Enhanced parallel fetching from multiple APIs
+export async function fetchFromMultipleApis(id: string, title?: string, author?: string): Promise<SearchResult> {
+  let partialData: Partial<SearchResult> = { id };
+  const apiPromises = [];
+  
+  // Try to get data from OpenLibrary if we have an OL id
+  if (id.startsWith('OL')) {
+    apiPromises.push(getOpenLibraryBookDetails(id).catch(error => {
+      console.log('OpenLibrary fetch failed:', error);
+      return null;
+    }));
+  }
+  
+  // Try Google Books API
+  apiPromises.push(getGoogleBookDetails(id).catch(error => {
+    console.log('Google Books fetch failed:', error);
+    return null;
+  }));
+  
+  // If we have title and/or author, try Gutendex
+  if (title || author) {
+    const searchQuery = [title, author].filter(Boolean).join(' ');
+    apiPromises.push(getGutendexBookDetails(searchQuery).catch(error => {
+      console.log('Gutendex fetch failed:', error);
+      return null;
+    }));
+  }
+  
+  // Wait for all APIs to respond
+  const results = await Promise.all(apiPromises);
+  
+  // Filter out null responses
+  const validResults = results.filter(result => result !== null) as SearchResult[];
+  
+  if (validResults.length > 0) {
+    // Merge the data from all valid APIs, prioritizing more complete data
+    return validResults.reduce((mergedBook, currentBook) => {
+      return {
+        id: mergedBook.id || currentBook.id,
+        title: mergedBook.title || currentBook.title,
+        author: mergedBook.author || currentBook.author,
+        description: mergedBook.description || currentBook.description,
+        cover: mergedBook.cover || currentBook.cover,
+        coverUrl: mergedBook.coverUrl || currentBook.coverUrl,
+        publishYear: mergedBook.publishYear || currentBook.publishYear,
+        authorBio: mergedBook.authorBio || currentBook.authorBio,
+      };
+    });
+  }
+  
+  // If all APIs failed, try a last-resort search with title/author
+  if ((title || author) && !id.includes(' ')) {
+    try {
+      const searchQuery = [title, author, 'book'].filter(Boolean).join(' ');
+      const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(searchQuery)}&limit=1`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.docs && data.docs.length > 0) {
+          const book = data.docs[0];
+          const coverUrl = book.cover_i 
+            ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg` 
+            : createPlaceholderImage(book.title || 'Book');
+          
+          return {
+            id,
+            title: book.title || title || 'Unknown Title',
+            author: book.author_name ? book.author_name[0] : author || 'Unknown Author',
+            description: 'No detailed description available for this book.',
+            cover: coverUrl,
+            coverUrl: coverUrl,
+            publishYear: book.first_publish_year,
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Last resort search failed:', error);
+    }
+  }
+  
+  // Create a placeholder with any partial data we might have
+  return {
+    id,
+    title: title || 'Book Information',
+    author: author || 'Unknown Author',
+    description: 'Details for this book are currently unavailable. Please try again later.',
+    cover: createPlaceholderImage(title || 'Book'),
+    coverUrl: createPlaceholderImage(title || 'Book'),
+    publishYear: null,
+  };
+}
+
 // Improved function to try getting book details from multiple sources with better error handling
 export async function tryMultipleApiSources(id: string): Promise<SearchResult> {
   // Return values from partial successful data
@@ -143,83 +289,21 @@ export async function tryMultipleApiSources(id: string): Promise<SearchResult> {
   };
   
   try {
-    // Try OpenLibrary first
+    // Try direct fetching based on ID first
     try {
-      return await getOpenLibraryBookDetails(id);
-    } catch (error) {
-      console.log('OpenLibrary fetch failed, trying Google Books');
-      // Continue with partial data if we have any
-      if (error instanceof Error && error.message !== 'Work not found') {
-        // Preserve any partial data we might have
-      }
-    }
-    
-    // Try Google Books
-    try {
-      // If we have an OL ID, convert it to a search term for Google Books
       if (id.startsWith('OL')) {
-        // Try to extract title or author from the ID or use general search
-        const searchParam = id.replace(/OL|W/g, '').replace(/\d+/g, ' book ').trim();
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        const searchResponse = await fetch(
-          `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchParam)}&maxResults=1`,
-          { signal: controller.signal }
-        );
-        clearTimeout(timeoutId);
-        
-        if (searchResponse.ok) {
-          const searchData = await searchResponse.json();
-          if (searchData.items && searchData.items.length > 0) {
-            return await getGoogleBookDetails(searchData.items[0].id);
-          }
-        }
-      } else if (!id.startsWith('OL')) {
-        // Direct Google Books ID
+        return await getOpenLibraryBookDetails(id);
+      } else {
         return await getGoogleBookDetails(id);
       }
-      
-      throw new Error('Google Books search failed');
     } catch (error) {
-      console.log('Google Books fetch failed');
-      
-      // Try to incorporate any partial data we gathered
-      if (Object.keys(partialResult).length > 1) {
-        const placeholderUrl = createPlaceholderImage(partialResult.title || 'Book');
-        return {
-          id,
-          title: partialResult.title || 'Book Information',
-          author: partialResult.author || 'Unknown Author',
-          description: partialResult.description || 'Book information could not be fully retrieved.',
-          cover: partialResult.cover || placeholderUrl,
-          coverUrl: partialResult.coverUrl || placeholderUrl,
-          publishYear: partialResult.publishYear || null
-        };
-      }
+      console.log('Primary API fetch failed, trying alternative sources');
+      // Continue to next approach
     }
     
-    // Last resort fallback with improved visuals
-    let title = 'Book Information';
-    let author = 'Unknown Author';
-    let placeholderImage = createPlaceholderImage('Book');
+    // If direct ID fetch failed, try the parallel approach with multiple APIs
+    return await fetchFromMultipleApis(id);
     
-    // Try to extract meaningful info from the ID
-    if (id.startsWith('OL')) {
-      title = `Open Library Book`;
-      author = 'Unknown Author';
-    }
-    
-    return {
-      id,
-      title,
-      author,
-      description: 'Details for this book are currently unavailable. Please try again later.',
-      cover: placeholderImage,
-      coverUrl: placeholderImage,
-      publishYear: null
-    };
   } catch (error) {
     console.error('All API attempts failed:', error);
     

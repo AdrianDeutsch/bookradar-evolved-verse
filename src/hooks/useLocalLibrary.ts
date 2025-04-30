@@ -105,18 +105,24 @@ export function useLocalLibrary(searchTerm: string = '', activeTab: string = 'al
   // Function to add a book to a specific shelf
   const addToShelf = (bookId: string, shelf: 'reading' | 'want-to-read' | 'completed') => {
     setBooks(prevBooks => 
-      prevBooks.map(book => 
-        book.id === bookId 
-          ? { 
-              ...book, 
-              shelf,
-              // Set initial progress for reading books
-              progress: shelf === 'reading' ? (book.progress || 0) : book.progress,
-              // Set completed books to 100% progress
-              progress: shelf === 'completed' ? 100 : book.progress
-            } 
-          : book
-      )
+      prevBooks.map(book => {
+        if (book.id === bookId) {
+          const updatedBook = { ...book, shelf };
+          
+          // Set initial progress for reading books if not already set
+          if (shelf === 'reading' && book.progress === undefined) {
+            updatedBook.progress = 0;
+          }
+          
+          // Set completed books to 100% progress
+          if (shelf === 'completed' && (book.progress === undefined || book.progress < 100)) {
+            updatedBook.progress = 100;
+          }
+          
+          return updatedBook;
+        }
+        return book;
+      })
     );
   };
 
