@@ -8,74 +8,33 @@ import BookCard from '@/components/books/BookCard';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-
-interface LibraryBook {
-  id: string;
-  title: string;
-  author: string;
-  coverUrl: string;
-  rating: number;
-  lastOpened?: Date;
-  progress?: number;
-}
+import BookShelf from '@/components/books/BookShelf';
+import { useLocalLibrary } from '@/hooks/useLocalLibrary';
+import { Button } from '@/components/ui/button';
+import { Book, BookOpen, BookmarkPlus, Check } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Badge } from '@/components/ui/badge';
 
 const Library = () => {
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [activeTab, setActiveTab] = useState('all');
+  const isMobile = useIsMobile();
   
-  // Sample library data - in a production app this would come from an API or local storage
-  const [books, setBooks] = useState<LibraryBook[]>([
-    {
-      id: '1',
-      title: 'The Great Gatsby',
-      author: 'F. Scott Fitzgerald',
-      coverUrl: 'https://covers.openlibrary.org/b/id/8152547-M.jpg',
-      rating: 4.2,
-      progress: 72
-    },
-    {
-      id: '2',
-      title: '1984',
-      author: 'George Orwell',
-      coverUrl: 'https://covers.openlibrary.org/b/id/8575241-M.jpg',
-      rating: 4.6,
-      progress: 15
-    },
-    {
-      id: '3',
-      title: 'To Kill a Mockingbird',
-      author: 'Harper Lee',
-      coverUrl: 'https://covers.openlibrary.org/b/id/12008442-M.jpg',
-      rating: 4.8,
-      progress: 100
-    }
-  ]);
+  // Use our custom hook for local library management
+  const { 
+    books, 
+    filteredBooks,
+    addToShelf,
+    removeFromShelf,
+    updateProgress,
+  } = useLocalLibrary(debouncedSearchTerm, activeTab);
 
-  const [filteredBooks, setFilteredBooks] = useState<LibraryBook[]>(books);
-
-  // Filter books based on search term and active tab
-  useEffect(() => {
-    let results = books;
-    
-    // Apply search filter
-    if (debouncedSearchTerm) {
-      results = results.filter(book => 
-        book.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || 
-        book.author.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-      );
-    }
-    
-    // Apply tab filter
-    if (activeTab === 'reading') {
-      results = results.filter(book => book.progress && book.progress < 100);
-    } else if (activeTab === 'completed') {
-      results = results.filter(book => book.progress && book.progress === 100);
-    }
-    
-    setFilteredBooks(results);
-  }, [debouncedSearchTerm, books, activeTab]);
+  // Get counts for each shelf to display as badges
+  const readingCount = books.filter(book => book.shelf === 'reading').length;
+  const wantToReadCount = books.filter(book => book.shelf === 'want-to-read').length;
+  const completedCount = books.filter(book => book.progress === 100).length;
 
   return (
     <Layout>
@@ -101,82 +60,76 @@ const Library = () => {
         </div>
         
         <Tabs defaultValue="all" onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="all">{t('allBooks')}</TabsTrigger>
-            <TabsTrigger value="reading">{t('language') === 'de' ? 'Lesend' : 'Reading'}</TabsTrigger>
-            <TabsTrigger value="completed">{t('language') === 'de' ? 'Abgeschlossen' : 'Completed'}</TabsTrigger>
+          <TabsList className="w-full md:w-auto">
+            <TabsTrigger value="all" className="flex items-center gap-2">
+              <Book className="h-4 w-4" />
+              <span>{t('allBooks')}</span>
+              <Badge variant="secondary" className="ml-1">
+                {books.length}
+              </Badge>
+            </TabsTrigger>
+            
+            <TabsTrigger value="reading" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              <span>{t('language') === 'de' ? 'Lesend' : 'Reading'}</span>
+              {readingCount > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {readingCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            
+            <TabsTrigger value="want-to-read" className="flex items-center gap-2">
+              <BookmarkPlus className="h-4 w-4" />
+              <span>{t('language') === 'de' ? 'Leseliste' : 'Want to Read'}</span>
+              {wantToReadCount > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {wantToReadCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            
+            <TabsTrigger value="completed" className="flex items-center gap-2">
+              <Check className="h-4 w-4" />
+              <span>{t('language') === 'de' ? 'Abgeschlossen' : 'Completed'}</span>
+              {completedCount > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {completedCount}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="all" className="mt-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredBooks.map(book => (
-                <BookCard
-                  key={book.id}
-                  id={book.id}
-                  title={book.title}
-                  author={book.author}
-                  coverUrl={book.coverUrl}
-                  rating={book.rating}
-                />
-              ))}
-            </div>
-            {filteredBooks.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">
-                  {t('language') === 'de' 
-                    ? 'Keine Bücher gefunden' 
-                    : 'No books found'}
-                </p>
-              </div>
-            )}
+            <BookShelf 
+              books={filteredBooks}
+              shelfType="all"
+              emptyMessage={t('language') === 'de' ? 'Keine Bücher gefunden' : 'No books found'}
+            />
           </TabsContent>
           
           <TabsContent value="reading" className="mt-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredBooks.map(book => (
-                <BookCard
-                  key={book.id}
-                  id={book.id}
-                  title={book.title}
-                  author={book.author}
-                  coverUrl={book.coverUrl}
-                  rating={book.rating}
-                />
-              ))}
-            </div>
-            {filteredBooks.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">
-                  {t('language') === 'de' 
-                    ? 'Keine Bücher, die du gerade liest' 
-                    : 'No books currently being read'}
-                </p>
-              </div>
-            )}
+            <BookShelf 
+              books={filteredBooks}
+              shelfType="reading"
+              emptyMessage={t('language') === 'de' ? 'Keine Bücher, die du gerade liest' : 'No books currently being read'}
+            />
+          </TabsContent>
+          
+          <TabsContent value="want-to-read" className="mt-6">
+            <BookShelf 
+              books={filteredBooks}
+              shelfType="want-to-read"
+              emptyMessage={t('language') === 'de' ? 'Keine Bücher auf deiner Leseliste' : 'No books in your reading list'}
+            />
           </TabsContent>
           
           <TabsContent value="completed" className="mt-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredBooks.map(book => (
-                <BookCard
-                  key={book.id}
-                  id={book.id}
-                  title={book.title}
-                  author={book.author}
-                  coverUrl={book.coverUrl}
-                  rating={book.rating}
-                />
-              ))}
-            </div>
-            {filteredBooks.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">
-                  {t('language') === 'de' 
-                    ? 'Keine abgeschlossenen Bücher' 
-                    : 'No completed books'}
-                </p>
-              </div>
-            )}
+            <BookShelf 
+              books={filteredBooks}
+              shelfType="completed"
+              emptyMessage={t('language') === 'de' ? 'Keine abgeschlossenen Bücher' : 'No completed books'}
+            />
           </TabsContent>
         </Tabs>
       </div>

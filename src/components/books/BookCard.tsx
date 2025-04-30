@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/components/ui/use-toast';
+import { Progress } from '@/components/ui/progress';
 
 interface BookCardProps {
   id: string;
@@ -14,9 +15,10 @@ interface BookCardProps {
   author: string;
   coverUrl: string;
   rating?: number;
+  progress?: number;
 }
 
-const BookCard = ({ id, title, author, coverUrl, rating }: BookCardProps) => {
+const BookCard = ({ id, title, author, coverUrl, rating, progress }: BookCardProps) => {
   const { t } = useLanguage();
   const [isFavorite, setIsFavorite] = useState(false);
   const [isInWishlist, setIsInWishlist] = useState(false);
@@ -106,6 +108,18 @@ const BookCard = ({ id, title, author, coverUrl, rating }: BookCardProps) => {
         <CardContent className="p-4">
           <h3 className="font-semibold leading-tight line-clamp-2 mb-1">{title}</h3>
           <p className="text-sm text-muted-foreground">{author}</p>
+          
+          {typeof progress === 'number' && (
+            <div className="mt-2">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-muted-foreground">
+                  {t('language') === 'de' ? 'Fortschritt' : 'Progress'}
+                </span>
+                <span className="font-medium">{progress}%</span>
+              </div>
+              <Progress value={progress} className="h-1.5" />
+            </div>
+          )}
         </CardContent>
         
         <CardFooter className="p-2 pt-0 flex justify-between items-center">
