@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Search as SearchIcon, X, BookOpen } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/context/LanguageContext';
 import { useDebounce } from '@/hooks/useDebounce';
 import { searchBooks, SearchResult } from '@/services/bookService';
+import { useToast } from '@/hooks/use-toast';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -14,12 +14,14 @@ interface SearchBarProps {
 
 const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState(initialQuery);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [suggestionsFocusIndex, setSuggestionsFocusIndex] = useState(-1);
+  const [hasError, setHasError] = useState(false);
   
   const debouncedQuery = useDebounce(query, 500);
 
@@ -27,10 +29,13 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
     const fetchSuggestions = async () => {
       if (debouncedQuery.length < 2) {
         setSuggestions([]);
+        setHasError(false);
         return;
       }
 
       setIsLoading(true);
+      setHasError(false);
+      
       try {
         const results = await searchBooks({ query: debouncedQuery, limit: 5 });
         
@@ -57,6 +62,14 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
         setSuggestions(sortedResults);
       } catch (error) {
         console.error('Error fetching suggestions:', error);
+        setHasError(true);
+        toast({
+          title: t('language') === 'de' ? 'Suchfehler' : 'Search Error',
+          description: t('language') === 'de' 
+            ? 'Es gab ein Problem bei der Suche. Bitte versuche es später erneut.' 
+            : 'There was an issue with your search. Please try again later.',
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
@@ -66,8 +79,9 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
       fetchSuggestions();
     } else {
       setSuggestions([]);
+      setHasError(false);
     }
-  }, [debouncedQuery]);
+  }, [debouncedQuery, t, toast]);
 
   useEffect(() => {
     // Hide suggestions when clicking outside
@@ -116,6 +130,7 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
     setShowSuggestions(value.length >= 2);
     // Reset focus index when input changes
     setSuggestionsFocusIndex(-1);
+    if (hasError) setHasError(false);
   };
 
   const handleClear = () => {
@@ -124,6 +139,7 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
     setShowSuggestions(false);
     onSearch('');
     setSuggestionsFocusIndex(-1);
+    setHasError(false);
     if (searchInputRef.current) {
       searchInputRef.current.focus();
     }
@@ -144,6 +160,13 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
     setSuggestionsFocusIndex(-1);
   };
 
+  const handleRetry = () => {
+    if (debouncedQuery.length >= 2) {
+      setHasError(false);
+      onSearch(query);
+    }
+  };
+
   return (
     <div className="relative" onClick={(e) => e.stopPropagation()}>
       <form onSubmit={handleSubmit} className="relative">
@@ -155,7 +178,7 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
             placeholder={t('searchPlaceholder')}
             value={query}
             onChange={handleInputChange}
-            className="pl-10 pr-10 py-6 w-full"
+            className={`pl-10 pr-10 py-6 w-full ${hasError ? 'border-red-500' : ''}`}
             aria-label={t('search')}
             onFocus={() => {
               if (query.length >= 2) {
@@ -193,6 +216,22 @@ const SearchBar = ({ onSearch, initialQuery = '' }: SearchBarProps) => {
           {isLoading ? (
             <div className="p-2 text-sm text-muted-foreground">
               {t('loading')}...
+            </div>
+          ) : hasError ? (
+            <div className="p-3 text-sm text-red-500">
+              <div className="mb-1">
+                {t('language') === 'de' 
+                  ? 'Fehler bei der Suche' 
+                  : 'Error fetching suggestions'}
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRetry} 
+                className="w-full"
+              >
+                {t('language') === 'de' ? 'Erneut versuchen' : 'Try again'}
+              </Button>
             </div>
           ) : suggestions.length > 0 ? (
             <ul className="max-h-[300px] overflow-auto">
