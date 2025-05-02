@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Book as BookIcon, Calendar, User, ArrowLeft, ExternalLink } from 'lucide-react';

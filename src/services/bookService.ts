@@ -1,4 +1,3 @@
-
 import { getOpenLibraryBookDetails, getGoogleBookDetails, tryMultipleApiSources, createPlaceholderImage } from './bookApi';
 
 interface OpenLibraryDoc {
@@ -15,8 +14,9 @@ export interface SearchResult {
   author: string;
   coverUrl: string | null;
   cover: string | null;  // Adding the 'cover' property for compatibility
-  publishYear?: number;
+  publishYear?: number | null;
   description?: string | null;
+  authorBio?: string | null;  // Adding authorBio property
 }
 
 export interface SearchOptions {
@@ -84,7 +84,8 @@ export const searchBooks = async ({ query, limit = 10, page = 1, sortBy = "relev
           coverUrl: coverUrl,
           cover: coverUrl,
           publishYear: doc.first_publish_year,
-          description: null
+          description: null,
+          authorBio: null
         };
       });
       
@@ -145,7 +146,8 @@ const searchGoogleBooks = async ({ query, limit = 10, page = 1 }: SearchOptions)
           coverUrl: coverUrl,
           cover: coverUrl,
           publishYear: volumeInfo.publishedDate ? parseInt(volumeInfo.publishedDate.substring(0, 4)) : undefined,
-          description: volumeInfo.description || null
+          description: volumeInfo.description || null,
+          authorBio: null
         };
       });
     } catch (error) {
@@ -173,7 +175,8 @@ const createPlaceholderResults = (query: string, count: number = 3): SearchResul
       coverUrl: createPlaceholderImage(`Result ${i+1} for "${query}"`),
       cover: createPlaceholderImage(`Result ${i+1} for "${query}"`),
       publishYear: new Date().getFullYear(),
-      description: 'This is a placeholder result. Try refining your search or check your internet connection.'
+      description: 'This is a placeholder result. Try refining your search or check your internet connection.',
+      authorBio: null
     });
   }
   
@@ -245,7 +248,8 @@ export const fetchBookOfTheDay = async (): Promise<SearchResult | null> => {
         coverUrl: coverUrl,
         cover: coverUrl, // Adding the required 'cover' property
         publishYear: randomBook.first_publish_year,
-        description: null
+        description: null,
+        authorBio: null
       };
     } catch (error) {
       console.error('Network error with Book of the Day:', error);
@@ -302,7 +306,8 @@ const fallbackBookOfTheDay = async (): Promise<SearchResult | null> => {
         coverUrl: coverUrl,
         cover: coverUrl, // Adding the required 'cover' property
         publishYear: randomBook.publishedDate ? parseInt(randomBook.publishedDate.substring(0, 4)) : undefined,
-        description: randomBook.description || null
+        description: randomBook.description || null,
+        authorBio: null
       };
     } catch (error) {
       console.error('Network error with fallback book of the day:', error);
@@ -325,6 +330,7 @@ const defaultBookOfTheDay = (): SearchResult => {
     coverUrl: '/placeholder.svg',
     cover: '/placeholder.svg', 
     publishYear: new Date().getFullYear(),
-    description: 'Discover a new book each day with BookRadar!'
+    description: 'Discover a new book each day with BookRadar!',
+    authorBio: null
   };
 };
