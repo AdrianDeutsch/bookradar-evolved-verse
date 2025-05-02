@@ -28,22 +28,21 @@ export const useBookInfo = ({ id, enableToasts = true }: UseBookInfoOptions): Bo
     retry: 2,
     staleTime: 1000 * 60 * 10, // 10 minutes
     gcTime: 1000 * 60 * 60, // 1 hour
-    // Using onSettled instead of onError to handle errors
-    onSettled: (data, err) => {
-      if (err) {
-        console.error('Error fetching book details:', err);
-        if (enableToasts) {
-          toast({
-            title: t('language') === 'de' ? 'Fehler beim Laden' : 'Loading Error',
-            description: t('language') === 'de'
-              ? 'Buchdetails konnten nicht geladen werden. Bitte versuche es später erneut.'
-              : 'Could not load book details. Please try again later.',
-            variant: "destructive"
-          });
-        }
-      }
-    }
   });
+  
+  // Handle errors with a side effect
+  React.useEffect(() => {
+    if (error && enableToasts) {
+      console.error('Error fetching book details:', error);
+      toast({
+        title: t('language') === 'de' ? 'Fehler beim Laden' : 'Loading Error',
+        description: t('language') === 'de'
+          ? 'Buchdetails konnten nicht geladen werden. Bitte versuche es später erneut.'
+          : 'Could not load book details. Please try again later.',
+        variant: "destructive"
+      });
+    }
+  }, [error, toast, t, enableToasts]);
   
   return {
     book: data || null,
