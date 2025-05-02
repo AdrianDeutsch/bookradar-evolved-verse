@@ -12,6 +12,7 @@ export interface LibraryBook {
   lastOpened?: Date;
   progress?: number;
   shelf?: 'reading' | 'want-to-read' | 'completed';
+  totalPages?: number; // Neu hinzugefügt für die Seitenanzahl
 }
 
 export function useLocalLibrary(searchTerm: string = '', activeTab: string = 'all') {
@@ -29,7 +30,8 @@ export function useLocalLibrary(searchTerm: string = '', activeTab: string = 'al
           coverUrl: 'https://covers.openlibrary.org/b/id/8152547-M.jpg',
           rating: 4.2,
           progress: 72,
-          shelf: 'reading'
+          shelf: 'reading',
+          totalPages: 180
         },
         {
           id: '2',
@@ -38,7 +40,8 @@ export function useLocalLibrary(searchTerm: string = '', activeTab: string = 'al
           coverUrl: 'https://covers.openlibrary.org/b/id/8575241-M.jpg',
           rating: 4.6,
           progress: 15,
-          shelf: 'reading'
+          shelf: 'reading',
+          totalPages: 328
         },
         {
           id: '3',
@@ -47,7 +50,8 @@ export function useLocalLibrary(searchTerm: string = '', activeTab: string = 'al
           coverUrl: 'https://covers.openlibrary.org/b/id/12008442-M.jpg',
           rating: 4.8,
           progress: 100,
-          shelf: 'completed'
+          shelf: 'completed',
+          totalPages: 281
         },
         {
           id: '4',
@@ -55,7 +59,8 @@ export function useLocalLibrary(searchTerm: string = '', activeTab: string = 'al
           author: 'Jane Austen',
           coverUrl: 'https://covers.openlibrary.org/b/id/6498519-M.jpg',
           rating: 4.5,
-          shelf: 'want-to-read'
+          shelf: 'want-to-read',
+          totalPages: 279
         },
         {
           id: '5',
@@ -63,7 +68,8 @@ export function useLocalLibrary(searchTerm: string = '', activeTab: string = 'al
           author: 'J.R.R. Tolkien',
           coverUrl: 'https://covers.openlibrary.org/b/id/6979861-M.jpg',
           rating: 4.7,
-          shelf: 'want-to-read'
+          shelf: 'want-to-read',
+          totalPages: 310
         }
       ];
     }
@@ -150,7 +156,9 @@ export function useLocalLibrary(searchTerm: string = '', activeTab: string = 'al
               ...book, 
               progress,
               // Automatically update shelf based on progress
-              shelf: progress === 100 ? 'completed' : (book.shelf || 'reading')
+              shelf: progress === 100 ? 'completed' : (book.shelf || 'reading'),
+              // Aktualisiere den Zeitstempel der letzten Änderung
+              lastOpened: new Date()
             } 
           : book
       )
@@ -159,7 +167,25 @@ export function useLocalLibrary(searchTerm: string = '', activeTab: string = 'al
 
   // Function to add a new book to the library
   const addBook = (book: LibraryBook) => {
-    setBooks(prevBooks => [...prevBooks, book]);
+    setBooks(prevBooks => {
+      // Prüfe, ob das Buch bereits in der Bibliothek ist
+      const existingBook = prevBooks.find(b => b.id === book.id);
+      if (existingBook) {
+        return prevBooks;
+      }
+      return [...prevBooks, book];
+    });
+  };
+
+  // Neue Funktion zum Aktualisieren der Gesamtseitenzahl eines Buches
+  const updateTotalPages = (bookId: string, totalPages: number) => {
+    setBooks(prevBooks => 
+      prevBooks.map(book => 
+        book.id === bookId 
+          ? { ...book, totalPages } 
+          : book
+      )
+    );
   };
 
   return {
@@ -168,6 +194,7 @@ export function useLocalLibrary(searchTerm: string = '', activeTab: string = 'al
     addToShelf,
     removeFromShelf,
     updateProgress,
-    addBook
+    addBook,
+    updateTotalPages
   };
 }
