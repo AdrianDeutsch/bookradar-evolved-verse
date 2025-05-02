@@ -1,22 +1,25 @@
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLanguage } from '@/context/LanguageContext';
-import BookCard from '@/components/books/BookCard';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import BookShelf from '@/components/books/BookShelf';
 import { useLocalLibrary } from '@/hooks/useLocalLibrary';
 import { Button } from '@/components/ui/button';
-import { Book, BookOpen, BookmarkPlus, Check } from 'lucide-react';
+import { Book, BookOpen, BookmarkPlus, Check, Users } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '@/components/ui/badge';
+import BookClubsList from '@/components/bookclubs/BookClubsList';
+import { PersonalizedRecommendations } from '@/components/recommendations/PersonalizedRecommendations';
 
 const Library = () => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [activeTab, setActiveTab] = useState('all');
@@ -26,9 +29,6 @@ const Library = () => {
   const { 
     books, 
     filteredBooks,
-    addToShelf,
-    removeFromShelf,
-    updateProgress,
   } = useLocalLibrary(debouncedSearchTerm, activeTab);
 
   // Get counts for each shelf to display as badges
@@ -38,7 +38,7 @@ const Library = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold mb-2">{t('library')}</h1>
           <p className="text-muted-foreground">
@@ -98,6 +98,11 @@ const Library = () => {
                 </Badge>
               )}
             </TabsTrigger>
+            
+            <TabsTrigger value="bookclubs" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span>{t('language') === 'de' ? 'Lesegruppen' : 'Book Clubs'}</span>
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="all" className="mt-6">
@@ -106,6 +111,13 @@ const Library = () => {
               shelfType="all"
               emptyMessage={t('language') === 'de' ? 'Keine Bücher gefunden' : 'No books found'}
             />
+            
+            {/* Personalisierte Empfehlungen */}
+            {books.length > 0 && !searchTerm && (
+              <div className="mt-12">
+                <PersonalizedRecommendations />
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="reading" className="mt-6">
@@ -130,6 +142,21 @@ const Library = () => {
               shelfType="completed"
               emptyMessage={t('language') === 'de' ? 'Keine abgeschlossenen Bücher' : 'No completed books'}
             />
+          </TabsContent>
+          
+          <TabsContent value="bookclubs" className="mt-6">
+            <BookClubsList variant="joined" limit={6} />
+            
+            <div className="flex justify-center mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/bookclubs')}
+                className="gap-2"
+              >
+                <Users className="h-4 w-4" />
+                {t('language') === 'de' ? 'Alle Lesegruppen anzeigen' : 'View all book clubs'}
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

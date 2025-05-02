@@ -15,6 +15,10 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import BookDetails from "./pages/BookDetails";
 import ReadingMode from "./components/features/ReadingMode";
+import BookClubs from "./pages/BookClubs";
+import CreateBookClub from "./pages/CreateBookClub";
+import BookClubDetail from "./pages/BookClubDetail";
+import JoinBookClub from "./pages/JoinBookClub";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +39,10 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/book/:id" element={<BookDetails />} />
               <Route path="/book/:id/read" element={<ReadingMode />} />
+              <Route path="/bookclubs" element={<BookClubs />} />
+              <Route path="/bookclubs/new" element={<CreateBookClub />} />
+              <Route path="/bookclubs/:id" element={<BookClubDetail />} />
+              <Route path="/bookclubs/join/:id" element={<JoinBookClub />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
