@@ -9,9 +9,9 @@ import { useLocalLibrary } from '@/hooks/useLocalLibrary';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft } from 'lucide-react';
-// Import our new components
+import { Skeleton, SkeletonText } from '@/components/ui/skeleton';
+import { ArrowLeft, Users } from 'lucide-react';
+// Import our components
 import BookClubHeader from '@/components/bookclubs/BookClubHeader';
 import BookClubActions from '@/components/bookclubs/BookClubActions';
 import BookClubBook from '@/components/bookclubs/BookClubBook';
@@ -34,7 +34,6 @@ const BookClubDetail = () => {
   } = useBookClubs();
   
   const [activeTab, setActiveTab] = useState("discussion");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   
   // Get club data with a small delay to simulate fetching
@@ -90,6 +89,12 @@ const BookClubDetail = () => {
     
     try {
       updateCurrentBook(id, bookId);
+      
+      // Get the updated club data
+      if (id) {
+        const updatedClub = getBookClub(id);
+        setClub(updatedClub);
+      }
     } catch (err) {
       console.error('Error updating book:', err);
       throw err;
@@ -279,6 +284,3 @@ const BookClubDetail = () => {
 };
 
 export default BookClubDetail;
-
-// Fixing the missing Users icon import
-import { Users } from 'lucide-react';
