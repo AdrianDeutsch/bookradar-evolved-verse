@@ -15,7 +15,8 @@ import {
   X, 
   Sun, 
   Moon, 
-  Globe 
+  Globe,
+  Users
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -33,6 +34,7 @@ const Sidebar = () => {
     { name: t('library'), path: '/library', icon: <BookOpen className="h-5 w-5" /> },
     { name: t('recommendations'), path: '/recommendations', icon: <Star className="h-5 w-5" /> },
     { name: t('statistics'), path: '/statistics', icon: <BarChart2 className="h-5 w-5" /> },
+    { name: language === 'de' ? 'Lesegruppen' : 'Book Clubs', path: '/bookclubs', icon: <Users className="h-5 w-5" /> },
     { name: t('settings'), path: '/settings', icon: <Settings className="h-5 w-5" /> },
   ];
 
