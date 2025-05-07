@@ -5,11 +5,13 @@ import Layout from '@/components/layout/Layout';
 import { useLanguage } from '@/context/LanguageContext';
 import { useBookClubs } from '@/hooks/useBookClubs';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const CreateBookClub = () => {
   const { language } = useLanguage();
@@ -21,24 +23,29 @@ const CreateBookClub = () => {
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     if (!name.trim()) {
-      toast({
-        title: language === 'de' ? 'Fehler' : 'Error',
-        description: language === 'de' 
-          ? 'Bitte gib einen Namen für die Lesegruppe an' 
-          : 'Please provide a name for the book club',
-        variant: "destructive"
-      });
+      setError(language === 'de' 
+        ? 'Bitte gib einen Namen für die Lesegruppe an' 
+        : 'Please provide a name for the book club');
       return;
     }
     
     setIsLoading(true);
     
     try {
+      // Validate image URL if provided
+      if (imageUrl && !imageUrl.match(/^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp))$/i)) {
+        throw new Error(language === 'de'
+          ? 'Bitte gib eine gültige Bild-URL ein (z.B. https://example.com/image.jpg)'
+          : 'Please enter a valid image URL (e.g., https://example.com/image.jpg)');
+      }
+      
       const newClub = createBookClub(
         name.trim(),
         description.trim(),
@@ -52,17 +59,14 @@ const CreateBookClub = () => {
           : `"${name}" has been successfully created`
       });
       
-      // Zur neuen Lesegruppe navigieren
+      // Navigate to the new book club
       navigate(`/bookclubs/${newClub.id}`);
-    } catch (error) {
-      console.error('Error creating book club:', error);
-      toast({
-        title: language === 'de' ? 'Fehler' : 'Error',
-        description: language === 'de'
+    } catch (err) {
+      console.error('Error creating book club:', err);
+      setError(err instanceof Error ? err.message : 
+        language === 'de'
           ? 'Beim Erstellen der Lesegruppe ist ein Fehler aufgetreten'
-          : 'An error occurred while creating the book club',
-        variant: "destructive"
-      });
+          : 'An error occurred while creating the book club');
     } finally {
       setIsLoading(false);
     }
@@ -74,9 +78,10 @@ const CreateBookClub = () => {
         <Button
           variant="ghost"
           onClick={() => navigate('/bookclubs')}
-          className="mb-4"
+          className="mb-4 gap-2"
         >
-          ← {language === 'de' ? 'Zurück zu Lesegruppen' : 'Back to Book Clubs'}
+          <ArrowLeft size={16} />
+          {language === 'de' ? 'Zurück zu Lesegruppen' : 'Back to Book Clubs'}
         </Button>
         
         <h1 className="text-3xl font-bold">
@@ -84,18 +89,24 @@ const CreateBookClub = () => {
         </h1>
         
         <Card>
-          <CardHeader>
-            <CardTitle>
-              {language === 'de' ? 'Gruppendetails' : 'Club Details'}
-            </CardTitle>
-            <CardDescription>
-              {language === 'de' 
-                ? 'Fülle die folgenden Informationen aus, um eine neue Lesegruppe zu erstellen'
-                : 'Fill out the following information to create a new book club'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit}>
+            <CardHeader>
+              <CardTitle>
+                {language === 'de' ? 'Gruppendetails' : 'Club Details'}
+              </CardTitle>
+              <CardDescription>
+                {language === 'de' 
+                  ? 'Fülle die folgenden Informationen aus, um eine neue Lesegruppe zu erstellen'
+                  : 'Fill out the following information to create a new book club'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="name">
                   {language === 'de' ? 'Gruppenname' : 'Club Name'} *
@@ -106,7 +117,14 @@ const CreateBookClub = () => {
                   onChange={(e) => setName(e.target.value)}
                   placeholder={language === 'de' ? 'z.B. Sci-Fi Liebhaber' : 'e.g. Sci-Fi Lovers'}
                   required
+                  maxLength={50}
+                  className={!name.trim() ? "border-destructive" : ""}
                 />
+                {!name.trim() && (
+                  <p className="text-xs text-destructive">
+                    {language === 'de' ? 'Pflichtfeld' : 'Required field'}
+                  </p>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -121,7 +139,11 @@ const CreateBookClub = () => {
                     ? 'Worum geht es in deiner Lesegruppe?'
                     : 'What is your book club about?'}
                   rows={3}
+                  maxLength={500}
                 />
+                <p className="text-xs text-muted-foreground">
+                  {description.length}/500 {language === 'de' ? 'Zeichen' : 'characters'}
+                </p>
               </div>
               
               <div className="space-y-2">
@@ -140,28 +162,31 @@ const CreateBookClub = () => {
                     : 'Add the URL of an image that represents your group'}
                 </p>
               </div>
-              
-              <div className="flex justify-end gap-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/bookclubs')}
-                  disabled={isLoading}
-                >
-                  {language === 'de' ? 'Abbrechen' : 'Cancel'}
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isLoading || !name.trim()}
-                >
-                  {isLoading 
-                    ? (language === 'de' ? 'Wird erstellt...' : 'Creating...')
-                    : (language === 'de' ? 'Lesegruppe erstellen' : 'Create Book Club')
-                  }
-                </Button>
-              </div>
-            </form>
-          </CardContent>
+            </CardContent>
+            <CardFooter className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/bookclubs')}
+                disabled={isLoading}
+              >
+                {language === 'de' ? 'Abbrechen' : 'Cancel'}
+              </Button>
+              <Button
+                type="submit"
+                disabled={isLoading || !name.trim()}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {language === 'de' ? 'Wird erstellt...' : 'Creating...'}
+                  </>
+                ) : (
+                  language === 'de' ? 'Lesegruppe erstellen' : 'Create Book Club'
+                )}
+              </Button>
+            </CardFooter>
+          </form>
         </Card>
       </div>
     </Layout>

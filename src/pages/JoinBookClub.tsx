@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { useLanguage } from '@/context/LanguageContext';
@@ -7,20 +7,23 @@ import { useBookClubs } from '@/hooks/useBookClubs';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, Check } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Users, Check, Loader2, ArrowLeft } from 'lucide-react';
 
 const JoinBookClub = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { language } = useLanguage();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const { getBookClub, joinBookClub, isClubMember } = useBookClubs();
   
   const club = getBookClub(id || '');
   const isMember = id ? isClubMember(id) : false;
 
-  // Prüfen, ob der Club existiert
+  // Check if the club exists
   useEffect(() => {
     if (!id || !club) {
       toast({
@@ -34,14 +37,19 @@ const JoinBookClub = () => {
       return;
     }
     
-    // Wenn bereits Mitglied, direkt zur Detailseite navigieren
+    // If already a member, navigate directly to the details page
     if (isMember) {
       navigate(`/bookclubs/${id}`);
     }
   }, [id, club, isMember, navigate, toast, language]);
 
-  const handleJoin = () => {
-    if (id) {
+  const handleJoin = async () => {
+    if (!id) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
       const success = joinBookClub(id);
       
       if (success) {
@@ -53,14 +61,17 @@ const JoinBookClub = () => {
         });
         navigate(`/bookclubs/${id}`);
       } else {
-        toast({
-          title: language === 'de' ? 'Fehler beim Beitreten' : 'Error joining',
-          description: language === 'de'
-            ? 'Du konntest dieser Lesegruppe nicht beitreten'
-            : 'You could not join this book club',
-          variant: "destructive"
-        });
+        setError(language === 'de'
+          ? 'Du konntest dieser Lesegruppe nicht beitreten'
+          : 'You could not join this book club');
       }
+    } catch (err) {
+      console.error("Error joining club:", err);
+      setError(language === 'de'
+        ? 'Ein Fehler ist aufgetreten. Bitte versuche es erneut.'
+        : 'An error occurred. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -72,9 +83,10 @@ const JoinBookClub = () => {
         <Button
           variant="ghost"
           onClick={() => navigate('/bookclubs')}
-          className="mb-4"
+          className="mb-4 gap-2"
         >
-          ← {language === 'de' ? 'Zurück zu Lesegruppen' : 'Back to Book Clubs'}
+          <ArrowLeft size={16} />
+          {language === 'de' ? 'Zurück zu Lesegruppen' : 'Back to Book Clubs'}
         </Button>
         
         <Card className="mt-6">
@@ -89,6 +101,12 @@ const JoinBookClub = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
             <div className="flex items-center gap-4">
               <div className="bg-primary/10 rounded-full p-4">
                 <Users className="h-6 w-6 text-primary" />
@@ -107,20 +125,41 @@ const JoinBookClub = () => {
               </h3>
               <p className="text-muted-foreground">{club.description}</p>
             </div>
+            
+            {club.imageUrl && (
+              <div className="mt-4">
+                <img 
+                  src={club.imageUrl} 
+                  alt={club.name} 
+                  className="rounded-md w-full max-h-48 object-cover"
+                />
+              </div>
+            )}
           </CardContent>
           <CardFooter className="flex justify-between">
             <Button
               variant="outline"
               onClick={() => navigate('/bookclubs')}
+              disabled={loading}
             >
               {language === 'de' ? 'Abbrechen' : 'Cancel'}
             </Button>
             <Button
               onClick={handleJoin}
               className="gap-1"
+              disabled={loading}
             >
-              <Check className="h-4 w-4" />
-              {language === 'de' ? 'Beitreten' : 'Join'}
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {language === 'de' ? 'Beitreten...' : 'Joining...'}
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" />
+                  {language === 'de' ? 'Beitreten' : 'Join'}
+                </>
+              )}
             </Button>
           </CardFooter>
         </Card>

@@ -5,7 +5,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, Book, ArrowRight } from 'lucide-react';
+import { Users, Book, ArrowRight, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -14,9 +14,16 @@ interface BookClubCardProps {
   onClick: () => void;
   onJoin: () => void;
   isMember: boolean;
+  isJoining?: boolean;
 }
 
-const BookClubCard: React.FC<BookClubCardProps> = ({ club, onClick, onJoin, isMember }) => {
+const BookClubCard: React.FC<BookClubCardProps> = ({ 
+  club, 
+  onClick, 
+  onJoin, 
+  isMember,
+  isJoining = false
+}) => {
   const { language } = useLanguage();
   
   const formatDate = (timestamp: number) => {
@@ -26,7 +33,7 @@ const BookClubCard: React.FC<BookClubCardProps> = ({ club, onClick, onJoin, isMe
     });
   };
   
-  // Placeholder image, wenn keine URL vorhanden
+  // Placeholder image if none provided
   const cardImage = club.imageUrl || 'https://via.placeholder.com/300x150?text=Book+Club';
 
   return (
@@ -80,9 +87,19 @@ const BookClubCard: React.FC<BookClubCardProps> = ({ club, onClick, onJoin, isMe
               e.stopPropagation();
               onJoin();
             }}
+            disabled={isJoining}
           >
-            <Users className="h-4 w-4" />
-            {language === 'de' ? 'Beitreten' : 'Join'}
+            {isJoining ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {language === 'de' ? 'Beitreten...' : 'Joining...'}
+              </>
+            ) : (
+              <>
+                <Users className="h-4 w-4" />
+                {language === 'de' ? 'Beitreten' : 'Join'}
+              </>
+            )}
           </Button>
         )}
       </CardFooter>

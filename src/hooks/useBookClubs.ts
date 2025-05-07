@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { storage } from '@/utils/localStorage';
 import { LibraryBook } from '@/hooks/useLocalLibrary';
 
-// Definiere Typen für Lesegruppen und Nachrichten
+// Define types for book clubs and messages
 export interface BookClubMessage {
   id: string;
   userId: string;
@@ -19,12 +19,12 @@ export interface BookClub {
   createdAt: number;
   members: string[]; // User-IDs
   currentBookId: string | null;
-  books: string[]; // Book-IDs für die Club-History
+  books: string[]; // Book-IDs for the club history
   messages: BookClubMessage[];
   imageUrl?: string;
 }
 
-// User-Repräsentation (vereinfacht für lokale Nutzung)
+// User representation (simplified for local use)
 export interface LocalUser {
   id: string;
   name: string;
@@ -43,17 +43,17 @@ export function useBookClubs() {
     const savedUser = storage.get<LocalUser>(CURRENT_USER_KEY, null);
     if (savedUser) return savedUser;
     
-    // Erstelle einen Beispielnutzer, wenn keiner existiert
+    // Create a sample user if none exists
     const newUser = {
       id: 'user_' + Date.now(),
-      name: 'Leser ' + Math.floor(Math.random() * 1000),
+      name: 'Reader ' + Math.floor(Math.random() * 1000),
       joinedClubs: []
     };
     storage.set(CURRENT_USER_KEY, newUser);
     return newUser;
   });
 
-  // Speichere Änderungen im localStorage
+  // Save changes to localStorage
   useEffect(() => {
     storage.set(BOOK_CLUBS_KEY, bookClubs);
   }, [bookClubs]);
@@ -63,7 +63,11 @@ export function useBookClubs() {
   }, [currentUser]);
 
   // Create a new book club
-  const createBookClub = (name: string, description: string, imageUrl?: string) => {
+  const createBookClub = (name: string, description: string, imageUrl?: string): BookClub => {
+    if (!name.trim()) {
+      throw new Error('Book club name is required');
+    }
+    
     const newClub: BookClub = {
       id: 'club_' + Date.now(),
       name,
@@ -89,7 +93,7 @@ export function useBookClubs() {
   };
 
   // Join an existing book club
-  const joinBookClub = (clubId: string) => {
+  const joinBookClub = (clubId: string): boolean => {
     const clubExists = bookClubs.some(club => club.id === clubId);
     const alreadyJoined = currentUser.joinedClubs.includes(clubId);
     
@@ -114,20 +118,42 @@ export function useBookClubs() {
   };
 
   // Leave a book club
-  const leaveBookClub = (clubId: string) => {
+  const leaveBookClub = (clubId: string): boolean => {
     const clubExists = bookClubs.some(club => club.id === clubId);
     const isJoined = currentUser.joinedClubs.includes(clubId);
     
     if (!clubExists || !isJoined) return false;
     
-    // Remove user from club members
-    setBookClubs(prevClubs => 
-      prevClubs.map(club => 
-        club.id === clubId
-          ? { ...club, members: club.members.filter(id => id !== currentUser.id) }
-          : club
-      )
-    );
+    // Check if user is the last member or creator (first member)
+    const club = bookClubs.find(c => c.id === clubId);
+    if (!club) return false;
+    
+    if (club.members.length === 1) {
+      // Last member - delete the club
+      setBookClubs(prevClubs => prevClubs.filter(c => c.id !== clubId));
+    } else if (club.members[0] === currentUser.id) {
+      // Creator is leaving - make the next member the creator
+      setBookClubs(prevClubs => 
+        prevClubs.map(c => {
+          if (c.id !== clubId) return c;
+          
+          const remainingMembers = c.members.filter(id => id !== currentUser.id);
+          return {
+            ...c,
+            members: remainingMembers
+          };
+        })
+      );
+    } else {
+      // Regular member leaving
+      setBookClubs(prevClubs => 
+        prevClubs.map(c => 
+          c.id === clubId
+            ? { ...c, members: c.members.filter(id => id !== currentUser.id) }
+            : c
+        )
+      );
+    }
     
     // Remove club from user's joined clubs
     setCurrentUser(prevUser => ({
@@ -138,13 +164,19 @@ export function useBookClubs() {
     return true;
   };
 
-  // Aktualisiere Buch für eine Lesegruppe
-  const updateCurrentBook = (clubId: string, bookId: string) => {
+  // Update book for a book club
+  const updateCurrentBook = (clubId: string, bookId: string): boolean => {
+    // Check if user is admin/creator of the club
+    const club = bookClubs.find(c => c.id === clubId);
+    if (!club || club.members[0] !== currentUser.id) {
+      return false;
+    }
+    
     setBookClubs(prevClubs => 
       prevClubs.map(club => {
         if (club.id !== clubId) return club;
         
-        // Füge das alte aktuelle Buch zur Verlaufsliste hinzu, falls vorhanden
+        // Add the old current book to the history list if available
         const updatedBooks = club.currentBookId && !club.books.includes(club.currentBookId)
           ? [...club.books, club.currentBookId]
           : club.books;
@@ -158,11 +190,13 @@ export function useBookClubs() {
         };
       })
     );
+    
+    return true;
   };
 
-  // Sende eine neue Nachricht
-  const sendMessage = (clubId: string, content: string) => {
-    if (!content.trim()) return false;
+  // Send a new message
+  const sendMessage = (clubId: string, content: string): boolean => {
+    if (!content.trim() || !isClubMember(clubId)) return false;
     
     const newMessage: BookClubMessage = {
       id: 'msg_' + Date.now(),
@@ -183,8 +217,8 @@ export function useBookClubs() {
     return true;
   };
 
-  // Aktualisiere Nutzernamen
-  const updateUserName = (newName: string) => {
+  // Update username
+  const updateUserName = (newName: string): boolean => {
     if (!newName.trim()) return false;
     
     setCurrentUser(prevUser => ({
@@ -195,18 +229,18 @@ export function useBookClubs() {
     return true;
   };
 
-  // Finde ein bestimmtes BookClub
-  const getBookClub = (clubId: string) => {
+  // Find a specific book club
+  const getBookClub = (clubId: string): BookClub | null => {
     return bookClubs.find(club => club.id === clubId) || null;
   };
 
-  // Prüfe, ob der Nutzer einem Club beigetreten ist
-  const isClubMember = (clubId: string) => {
+  // Check if the user is a member of a club
+  const isClubMember = (clubId: string): boolean => {
     return currentUser.joinedClubs.includes(clubId);
   };
 
-  // Filtert BookClubs basierend auf einem Suchbegriff
-  const searchBookClubs = (query: string) => {
+  // Filter book clubs based on a search query
+  const searchBookClubs = (query: string): BookClub[] => {
     if (!query.trim()) return bookClubs;
     
     const normalizedQuery = query.toLowerCase();

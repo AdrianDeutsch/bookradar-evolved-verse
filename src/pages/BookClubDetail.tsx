@@ -12,7 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Book, MessageSquare, LogOut, Send } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Users, Book, MessageSquare, LogOut, Send, ArrowLeft, Loader2, UserMinus, Settings } from 'lucide-react';
 import BookCard from '@/components/books/BookCard';
 
 const BookClubDetail = () => {
@@ -27,19 +29,27 @@ const BookClubDetail = () => {
     isClubMember, 
     leaveBookClub, 
     sendMessage,
-    updateCurrentBook
+    updateCurrentBook,
+    currentUser
   } = useBookClubs();
   
   const [activeTab, setActiveTab] = useState("discussion");
   const [message, setMessage] = useState("");
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [leavingGroup, setLeavingGroup] = useState(false);
+  const [updatingBook, setUpdatingBook] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const club = getBookClub(id || '');
   
-  // Prüfen, ob der Nutzer ein Mitglied ist
+  // Check if user is a member
   const isMember = id ? isClubMember(id) : false;
   
-  // Wenn keine Club-ID oder Club nicht gefunden, zur Übersicht zurückkehren
+  // Check if user is admin (creator)
+  const isAdmin = club?.members[0] === currentUser.id;
+  
+  // If no club ID or club not found, return to overview
   useEffect(() => {
     if (!id || !club) {
       toast({
@@ -53,56 +63,129 @@ const BookClubDetail = () => {
     }
   }, [id, club, navigate, toast, language]);
   
-  // Wenn Nutzer nicht Mitglied ist, Beitrittsmöglichkeit zeigen
+  // If user is not a member, show about tab
   useEffect(() => {
     if (club && !isMember) {
       setActiveTab('about');
     }
   }, [club, isMember]);
   
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (id && message.trim()) {
-      sendMessage(id, message.trim());
-      setMessage('');
+    if (!id || !message.trim()) return;
+    
+    setSendingMessage(true);
+    setError(null);
+    
+    try {
+      const success = sendMessage(id, message.trim());
+      if (success) {
+        setMessage('');
+      } else {
+        setError(language === 'de'
+          ? 'Nachricht konnte nicht gesendet werden'
+          : 'Message could not be sent');
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
+      setError(language === 'de'
+        ? 'Ein Fehler ist aufgetreten. Bitte versuche es erneut.'
+        : 'An error occurred. Please try again.');
+    } finally {
+      setSendingMessage(false);
     }
   };
   
-  const handleLeaveClub = () => {
-    if (id) {
-      leaveBookClub(id);
+  const handleLeaveClub = async () => {
+    if (!id) return;
+    
+    setLeavingGroup(true);
+    
+    try {
+      const success = leaveBookClub(id);
+      
+      if (success) {
+        toast({
+          title: language === 'de' ? 'Lesegruppe verlassen' : 'Left book club',
+          description: language === 'de'
+            ? 'Du hast die Lesegruppe verlassen'
+            : 'You have left the book club'
+        });
+        navigate('/bookclubs');
+      } else {
+        toast({
+          title: language === 'de' ? 'Fehler' : 'Error',
+          description: language === 'de'
+            ? 'Die Lesegruppe konnte nicht verlassen werden'
+            : 'Could not leave the book club',
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      console.error('Error leaving club:', err);
       toast({
-        title: language === 'de' ? 'Lesegruppe verlassen' : 'Left book club',
+        title: language === 'de' ? 'Fehler' : 'Error',
         description: language === 'de'
-          ? 'Du hast die Lesegruppe verlassen'
-          : 'You have left the book club'
+          ? 'Ein Fehler ist aufgetreten. Bitte versuche es erneut.'
+          : 'An error occurred. Please try again.',
+        variant: "destructive"
       });
-      navigate('/bookclubs');
+    } finally {
+      setLeavingGroup(false);
     }
   };
   
-  const handleBookChange = (bookId: string) => {
+  const handleBookChange = async (bookId: string) => {
+    if (!id || !bookId) return;
+    
     setSelectedBookId(bookId);
-    if (id && bookId) {
+    setUpdatingBook(true);
+    
+    try {
       updateCurrentBook(id, bookId);
+      
       toast({
         title: language === 'de' ? 'Buch aktualisiert' : 'Book updated',
         description: language === 'de'
           ? 'Das aktuelle Buch wurde aktualisiert'
           : 'The current book has been updated'
       });
+    } catch (err) {
+      console.error('Error updating book:', err);
+      toast({
+        title: language === 'de' ? 'Fehler' : 'Error',
+        description: language === 'de'
+          ? 'Das Buch konnte nicht aktualisiert werden'
+          : 'Could not update the book',
+        variant: "destructive"
+      });
+    } finally {
+      setUpdatingBook(false);
     }
   };
   
   if (!club) {
-    return null; // Frühes Return, wenn kein Club gefunden wurde
+    return null; // Early return if no club found
   }
 
-  // Sortiere Nachrichten nach Zeitstempel (neueste zuletzt)
+  // Sort messages by timestamp (newest last)
   const sortedMessages = [...club.messages].sort((a, b) => a.timestamp - b.timestamp);
   
-  // Finde Daten zum aktuellen Buch
+  // Find data for current book
   const currentBook = books.find(book => book.id === club.currentBookId);
+  
+  // Format timestamp to readable date
+  const formatTimestamp = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString(
+      language === 'de' ? 'de-DE' : 'en-US',
+      { 
+        day: 'numeric', 
+        month: 'short', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      }
+    );
+  };
   
   return (
     <Layout>
@@ -110,13 +193,14 @@ const BookClubDetail = () => {
         <Button
           variant="ghost"
           onClick={() => navigate('/bookclubs')}
-          className="mb-4"
+          className="mb-4 gap-2"
         >
-          ← {language === 'de' ? 'Zurück zu Lesegruppen' : 'Back to Book Clubs'}
+          <ArrowLeft size={16} />
+          {language === 'de' ? 'Zurück zu Lesegruppen' : 'Back to Book Clubs'}
         </Button>
         
         {/* Club Header */}
-        <div className="relative h-40 rounded-lg overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600">
+        <div className="relative h-48 sm:h-40 rounded-lg overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600">
           {club.imageUrl && (
             <img 
               src={club.imageUrl} 
@@ -138,32 +222,46 @@ const BookClubDetail = () => {
               size="sm"
               className="absolute top-4 right-4 gap-1 bg-white"
               onClick={handleLeaveClub}
+              disabled={leavingGroup}
             >
-              <LogOut className="h-4 w-4" />
+              {leavingGroup ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <UserMinus className="h-4 w-4" />
+              )}
               {language === 'de' ? 'Verlassen' : 'Leave'}
             </Button>
           )}
+          
+          {isAdmin && (
+            <div className="absolute top-4 left-4">
+              <Badge variant="secondary" className="flex gap-1 items-center">
+                <Settings className="h-3 w-3" />
+                {language === 'de' ? 'Admin' : 'Admin'}
+              </Badge>
+            </div>
+          )}
         </div>
         
-        {/* Club Inhalt mit Tabs */}
+        {/* Club Content with Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="about">
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="about" className="flex-1 sm:flex-initial">
               {language === 'de' ? 'Über' : 'About'}
             </TabsTrigger>
             {isMember && (
               <>
-                <TabsTrigger value="discussion">
+                <TabsTrigger value="discussion" className="flex-1 sm:flex-initial">
                   {language === 'de' ? 'Diskussion' : 'Discussion'}
                 </TabsTrigger>
-                <TabsTrigger value="books">
+                <TabsTrigger value="books" className="flex-1 sm:flex-initial">
                   {language === 'de' ? 'Bücher' : 'Books'}
                 </TabsTrigger>
               </>
             )}
           </TabsList>
           
-          {/* Über Tab */}
+          {/* About Tab */}
           <TabsContent value="about" className="pt-4">
             <Card>
               <CardHeader>
@@ -200,11 +298,38 @@ const BookClubDetail = () => {
                     </div>
                   </div>
                 )}
+                
+                {/* Members List */}
+                <div className="mt-8">
+                  <h3 className="text-lg font-medium mb-4">
+                    {language === 'de' ? 'Mitglieder' : 'Members'}
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {club.members.map((memberId, index) => (
+                      <div key={memberId} className="flex items-center gap-2 border rounded-full px-3 py-1">
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback>
+                            {memberId === currentUser.id 
+                              ? currentUser.name.charAt(0)
+                              : `U${index + 1}`}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm">
+                          {memberId === currentUser.id 
+                            ? `${currentUser.name} (${language === 'de' ? 'du' : 'you'})`
+                            : index === 0 
+                              ? `${language === 'de' ? 'Ersteller' : 'Creator'}`
+                              : `${language === 'de' ? 'Mitglied' : 'Member'} ${index}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
           
-          {/* Diskussions Tab */}
+          {/* Discussion Tab */}
           {isMember && (
             <TabsContent value="discussion" className="pt-4">
               <Card className="overflow-hidden">
@@ -219,8 +344,14 @@ const BookClubDetail = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pb-0">
-                  {/* Nachrichtenbereich */}
-                  <div className="h-[400px] overflow-y-auto mb-4 p-4 border rounded-md bg-muted/20">
+                  {error && (
+                    <Alert variant="destructive" className="mb-4">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {/* Message Area */}
+                  <div className="h-[400px] overflow-y-auto mb-4 p-4 border rounded-md bg-muted/20" id="messages-container">
                     {sortedMessages.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full text-center">
                         <MessageSquare className="h-12 w-12 text-muted-foreground mb-2" />
@@ -233,43 +364,50 @@ const BookClubDetail = () => {
                     ) : (
                       <div className="space-y-4">
                         {sortedMessages.map((msg) => (
-                          <div key={msg.id} className="flex gap-3">
-                            <Avatar>
-                              <AvatarFallback>{msg.username.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
+                          <div key={msg.id} className={`flex gap-3 ${msg.userId === currentUser.id ? 'justify-end' : ''}`}>
+                            {msg.userId !== currentUser.id && (
+                              <Avatar>
+                                <AvatarFallback>{msg.username.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                            )}
+                            <div className={`max-w-[75%] ${msg.userId === currentUser.id ? 'bg-primary/10 text-primary-foreground' : 'bg-muted'} p-3 rounded-lg`}>
                               <div className="flex items-baseline gap-2">
-                                <h4 className="font-medium">{msg.username}</h4>
+                                <h4 className="font-medium">{msg.userId === currentUser.id ? 
+                                  (language === 'de' ? 'Du' : 'You') : 
+                                  msg.username}
+                                </h4>
                                 <span className="text-xs text-muted-foreground">
-                                  {new Date(msg.timestamp).toLocaleString(
-                                    language === 'de' ? 'de-DE' : 'en-US',
-                                    { 
-                                      day: 'numeric', 
-                                      month: 'short', 
-                                      hour: '2-digit', 
-                                      minute: '2-digit' 
-                                    }
-                                  )}
+                                  {formatTimestamp(msg.timestamp)}
                                 </span>
                               </div>
                               <p className="text-sm mt-1">{msg.content}</p>
                             </div>
+                            {msg.userId === currentUser.id && (
+                              <Avatar>
+                                <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                            )}
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
                   
-                  {/* Nachrichteneingabe */}
+                  {/* Message Input */}
                   <form onSubmit={handleSendMessage} className="flex gap-2 mb-4">
                     <Input
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder={language === 'de' ? "Nachricht eingeben..." : "Type a message..."}
                       className="flex-1"
+                      disabled={sendingMessage}
                     />
-                    <Button type="submit" disabled={!message.trim()}>
-                      <Send className="h-4 w-4" />
+                    <Button type="submit" disabled={!message.trim() || sendingMessage}>
+                      {sendingMessage ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
                       <span className="sr-only">{language === 'de' ? 'Senden' : 'Send'}</span>
                     </Button>
                   </form>
@@ -278,7 +416,7 @@ const BookClubDetail = () => {
             </TabsContent>
           )}
           
-          {/* Bücher Tab */}
+          {/* Books Tab */}
           {isMember && (
             <TabsContent value="books" className="pt-4">
               <Card>
@@ -294,34 +432,70 @@ const BookClubDetail = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {/* Aktuelles Buch auswählen */}
-                    <div>
-                      <h3 className="text-lg font-medium mb-3">
-                        {language === 'de' ? 'Aktuelles Buch' : 'Current Book'}
-                      </h3>
-                      <Select
-                        value={selectedBookId || club.currentBookId || ""}
-                        onValueChange={handleBookChange}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder={
-                            language === 'de' 
-                              ? "Wähle ein Buch für die Gruppe" 
-                              : "Select a book for the club"
-                          } />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {books.map(book => (
-                            <SelectItem key={book.id} value={book.id}>
-                              {book.title} - {book.author}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* Select Current Book - Only for admins */}
+                    {isAdmin && (
+                      <div>
+                        <h3 className="text-lg font-medium mb-3">
+                          {language === 'de' ? 'Aktuelles Buch festlegen' : 'Set Current Book'}
+                        </h3>
+                        {books.length > 0 ? (
+                          <div className="space-y-2">
+                            <Select
+                              value={selectedBookId || club.currentBookId || ""}
+                              onValueChange={handleBookChange}
+                              disabled={updatingBook}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder={
+                                  language === 'de' 
+                                    ? "Wähle ein Buch für die Gruppe" 
+                                    : "Select a book for the club"
+                                } />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {books.map(book => (
+                                  <SelectItem key={book.id} value={book.id}>
+                                    {book.title} - {book.author}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            
+                            {updatingBook && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                {language === 'de' ? 'Wird aktualisiert...' : 'Updating...'}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">
+                            {language === 'de'
+                              ? 'Füge zuerst Bücher zu deiner Bibliothek hinzu'
+                              : 'Add books to your library first'}
+                            <Button
+                              variant="link"
+                              size="sm"
+                              onClick={() => navigate('/library')}
+                              className="px-0"
+                            >
+                              {language === 'de' ? 'Zur Bibliothek' : 'Go to Library'}
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {!isAdmin && (
+                          <div className="text-sm text-muted-foreground mt-2">
+                            {language === 'de'
+                              ? 'Nur der Gruppenadministrator kann Bücher festlegen'
+                              : 'Only the group administrator can set books'}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
-                    {/* Aktuelles Buch anzeigen */}
-                    {currentBook && (
+                    {/* Current Book Display */}
+                    {currentBook ? (
                       <div className="mt-4">
                         <h3 className="text-lg font-medium mb-4">
                           {language === 'de' ? 'Aktuelles Buch' : 'Current Book'}
@@ -336,9 +510,26 @@ const BookClubDetail = () => {
                           />
                         </div>
                       </div>
+                    ) : (
+                      <div className="p-8 text-center border rounded-md bg-muted/20">
+                        <Book className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                        <h4 className="font-medium mb-1">
+                          {language === 'de' ? 'Kein Buch ausgewählt' : 'No book selected'}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          {isAdmin 
+                            ? (language === 'de'
+                                ? 'Wähle ein Buch für die Gruppe aus'
+                                : 'Select a book for the group')
+                            : (language === 'de'
+                                ? 'Der Gruppenadministrator hat noch kein Buch festgelegt'
+                                : 'The group administrator has not set a book yet')
+                          }
+                        </p>
+                      </div>
                     )}
                     
-                    {/* Vergangene Bücher, falls vorhanden */}
+                    {/* Book History, if any */}
                     {club.books.length > 0 && (
                       <div className="mt-8">
                         <h3 className="text-lg font-medium mb-4">
@@ -371,6 +562,22 @@ const BookClubDetail = () => {
         </Tabs>
       </div>
     </Layout>
+  );
+};
+
+// Add missing components
+const Badge = ({ children, variant = "default", className = "" }) => {
+  const variantClasses = {
+    default: "bg-primary text-primary-foreground hover:bg-primary/80",
+    secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+    outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+    destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/80",
+  };
+
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${variantClasses[variant]} ${className}`}>
+      {children}
+    </span>
   );
 };
 
