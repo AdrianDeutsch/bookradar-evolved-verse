@@ -31,13 +31,33 @@ export interface LocalUser {
   joinedClubs: string[]; // Club-IDs
 }
 
+// Storage keys
 const CURRENT_USER_KEY = 'bookradar_current_user';
 const BOOK_CLUBS_KEY = 'bookradar_book_clubs';
 
 export function useBookClubs() {
-  const [bookClubs, setBookClubs] = useState<BookClub[]>(() => 
-    storage.get<BookClub[]>(BOOK_CLUBS_KEY, [])
-  );
+  // Initialize with storage data or defaults
+  const [bookClubs, setBookClubs] = useState<BookClub[]>(() => {
+    const storedClubs = storage.get<BookClub[]>(BOOK_CLUBS_KEY, []);
+    
+    // If no clubs exist and this is first initialization, create a sample club
+    if (storedClubs.length === 0) {
+      const sampleClub: BookClub = {
+        id: 'club_sample_1',
+        name: 'Science Fiction Enthusiasts',
+        description: 'A club dedicated to discussing classic and modern science fiction literature.',
+        createdAt: Date.now() - 7 * 24 * 60 * 60 * 1000, // 1 week ago
+        members: ['user_sample_1'],
+        currentBookId: null,
+        books: [],
+        messages: [],
+        imageUrl: 'https://images.unsplash.com/photo-1475775030903-8cba2e973b5c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80'
+      };
+      return [sampleClub];
+    }
+    
+    return storedClubs;
+  });
   
   const [currentUser, setCurrentUser] = useState<LocalUser>(() => {
     const savedUser = storage.get<LocalUser>(CURRENT_USER_KEY, null);
@@ -45,11 +65,11 @@ export function useBookClubs() {
     
     // Create a sample user if none exists
     const newUser = {
-      id: 'user_' + Date.now(),
+      id: 'user_sample_1',
       name: 'Reader ' + Math.floor(Math.random() * 1000),
-      joinedClubs: []
+      joinedClubs: ['club_sample_1'] // Add the sample club to user's joined clubs
     };
-    storage.set(CURRENT_USER_KEY, newUser);
+    
     return newUser;
   });
 

@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, Book, MessageSquare, LogOut, Send, ArrowLeft, Loader2, UserMinus, Settings } from 'lucide-react';
 import BookCard from '@/components/books/BookCard';
+import { Badge } from '@/components/ui/badge';
 
 const BookClubDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -40,8 +41,28 @@ const BookClubDetail = () => {
   const [leavingGroup, setLeavingGroup] = useState(false);
   const [updatingBook, setUpdatingBook] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   
-  const club = getBookClub(id || '');
+  // Get club data with a small delay to simulate fetching
+  const [club, setClub] = useState(() => {
+    if (id) {
+      return getBookClub(id);
+    }
+    return null;
+  });
+  
+  useEffect(() => {
+    // Simulate data fetching (in real world this would be an API call)
+    const timer = setTimeout(() => {
+      setLoading(false);
+      if (id) {
+        const foundClub = getBookClub(id);
+        setClub(foundClub);
+      }
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [id, getBookClub]);
   
   // Check if user is a member
   const isMember = id ? isClubMember(id) : false;
@@ -49,9 +70,9 @@ const BookClubDetail = () => {
   // Check if user is admin (creator)
   const isAdmin = club?.members[0] === currentUser.id;
   
-  // If no club ID or club not found, return to overview
+  // If no club ID or club not found after loading, return to overview
   useEffect(() => {
-    if (!id || !club) {
+    if (!loading && (!id || !club)) {
       toast({
         title: language === 'de' ? 'Lesegruppe nicht gefunden' : 'Book club not found',
         description: language === 'de'
@@ -61,7 +82,7 @@ const BookClubDetail = () => {
       });
       navigate('/bookclubs');
     }
-  }, [id, club, navigate, toast, language]);
+  }, [id, club, navigate, toast, language, loading]);
   
   // If user is not a member, show about tab
   useEffect(() => {
@@ -164,8 +185,38 @@ const BookClubDetail = () => {
     }
   };
   
+  // Display loading skeleton
+  if (loading) {
+    return (
+      <Layout>
+        <div className="space-y-6 max-w-4xl mx-auto">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/bookclubs')}
+            className="mb-4 gap-2"
+          >
+            <ArrowLeft size={16} />
+            {language === 'de' ? 'Zurück zu Lesegruppen' : 'Back to Book Clubs'}
+          </Button>
+          
+          {/* Loading State for Club Header */}
+          <Skeleton className="h-48 sm:h-40 rounded-lg w-full" />
+          
+          {/* Loading State for Club Content */}
+          <div className="space-y-4">
+            <Skeleton className="h-10 w-full max-w-md" />
+            <div className="space-y-2">
+              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-32 w-full" />
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+  
   if (!club) {
-    return null; // Early return if no club found
+    return null; // Early return if no club found (will be handled by useEffect)
   }
 
   // Sort messages by timestamp (newest last)
@@ -562,22 +613,6 @@ const BookClubDetail = () => {
         </Tabs>
       </div>
     </Layout>
-  );
-};
-
-// Add missing components
-const Badge = ({ children, variant = "default", className = "" }) => {
-  const variantClasses = {
-    default: "bg-primary text-primary-foreground hover:bg-primary/80",
-    secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-    outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-    destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/80",
-  };
-
-  return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${variantClasses[variant]} ${className}`}>
-      {children}
-    </span>
   );
 };
 

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
 const BookClubs = () => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const [activeTab, setActiveTab] = useState("all");
   const navigate = useNavigate();
 
