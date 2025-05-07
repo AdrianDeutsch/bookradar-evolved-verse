@@ -50,7 +50,13 @@ export function useBookClubs() {
         members: ['user_sample_1'],
         currentBookId: null,
         books: [],
-        messages: [],
+        messages: [{
+          id: 'msg_sample_1',
+          userId: 'user_sample_1',
+          username: 'Club Creator',
+          content: 'Welcome to our book club! Feel free to introduce yourself and share your favorite science fiction books.',
+          timestamp: Date.now() - 6 * 24 * 60 * 60 * 1000 // 6 days ago
+        }],
         imageUrl: 'https://images.unsplash.com/photo-1475775030903-8cba2e973b5c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80'
       };
       return [sampleClub];
@@ -249,31 +255,46 @@ export function useBookClubs() {
     return true;
   };
 
-  // Find a specific book club
+  // Find a specific book club with better error handling
   const getBookClub = (clubId: string): BookClub | null => {
-    return bookClubs.find(club => club.id === clubId) || null;
+    if (!clubId) return null;
+    
+    try {
+      // Find the club by ID
+      const club = bookClubs.find(club => club.id === clubId);
+      return club || null;
+    } catch (error) {
+      console.error("Error fetching book club:", error);
+      return null;
+    }
   };
 
   // Check if the user is a member of a club
   const isClubMember = (clubId: string): boolean => {
+    if (!clubId) return false;
     return currentUser.joinedClubs.includes(clubId);
   };
 
   // Filter book clubs based on a search query
   const searchBookClubs = (query: string): BookClub[] => {
-    if (!query.trim()) return bookClubs;
+    if (!query || !query.trim()) return bookClubs;
     
-    const normalizedQuery = query.toLowerCase();
+    const normalizedQuery = query.toLowerCase().trim();
     return bookClubs.filter(club => 
       club.name.toLowerCase().includes(normalizedQuery) ||
       club.description.toLowerCase().includes(normalizedQuery)
     );
   };
 
+  // Get a list of book clubs the current user has joined
+  const getJoinedBookClubs = (): BookClub[] => {
+    return bookClubs.filter(club => isClubMember(club.id));
+  };
+
   return {
     bookClubs,
     currentUser,
-    userClubs: bookClubs.filter(club => currentUser.joinedClubs.includes(club.id)),
+    userClubs: getJoinedBookClubs(),
     createBookClub,
     joinBookClub,
     leaveBookClub,
@@ -282,6 +303,7 @@ export function useBookClubs() {
     updateUserName,
     getBookClub,
     isClubMember,
-    searchBookClubs
+    searchBookClubs,
+    getJoinedBookClubs
   };
 }

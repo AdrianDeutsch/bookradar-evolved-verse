@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, BookText, Image } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const CreateBookClub = () => {
@@ -84,7 +84,8 @@ const CreateBookClub = () => {
           {language === 'de' ? 'Zurück zu Lesegruppen' : 'Back to Book Clubs'}
         </Button>
         
-        <h1 className="text-3xl font-bold">
+        <h1 className="text-3xl font-bold flex items-center gap-3">
+          <BookText className="h-8 w-8" />
           {language === 'de' ? 'Neue Lesegruppe erstellen' : 'Create New Book Club'}
         </h1>
         
@@ -147,7 +148,8 @@ const CreateBookClub = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="imageUrl">
+                <Label htmlFor="imageUrl" className="flex items-center gap-2">
+                  <Image className="h-4 w-4" />
                   {language === 'de' ? 'Bild-URL (optional)' : 'Image URL (optional)'}
                 </Label>
                 <Input

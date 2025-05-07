@@ -6,11 +6,13 @@ import { useLanguage } from '@/context/LanguageContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BookClubsList from '@/components/bookclubs/BookClubsList';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 const BookClubs = () => {
   const { language } = useLanguage();
   const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
   return (
@@ -36,6 +38,17 @@ const BookClubs = () => {
           </Button>
         </div>
 
+        {/* Search bar for book clubs */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={language === 'de' ? "Lesegruppen durchsuchen..." : "Search book clubs..."}
+            className="pl-10"
+          />
+        </div>
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="all">
@@ -47,11 +60,11 @@ const BookClubs = () => {
           </TabsList>
 
           <TabsContent value="all" className="pt-4">
-            <BookClubsList variant="all" />
+            <BookClubsList variant="all" searchQuery={searchQuery} />
           </TabsContent>
 
           <TabsContent value="joined" className="pt-4">
-            <BookClubsList variant="joined" />
+            <BookClubsList variant="joined" searchQuery={searchQuery} />
           </TabsContent>
         </Tabs>
       </div>
