@@ -46,7 +46,7 @@ const CreateBookClub = () => {
           : 'Please enter a valid image URL (e.g., https://example.com/image.jpg)');
       }
       
-      const newClub = createBookClub(
+      const newClub = await createBookClub(
         name.trim(),
         description.trim(),
         imageUrl.trim() || undefined

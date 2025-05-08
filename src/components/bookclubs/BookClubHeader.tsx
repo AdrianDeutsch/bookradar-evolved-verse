@@ -51,7 +51,7 @@ const BookClubHeader = ({ club, isAdmin, isLoading = false }: BookClubHeaderProp
       </div>
       
       {isAdmin && (
-        <div className="absolute top-4 left-4">
+        <div className="absolute top-4 right-4">
           <Badge variant="secondary" className="flex gap-1 items-center">
             <Settings className="h-3 w-3" />
             {language === 'de' ? 'Admin' : 'Admin'}

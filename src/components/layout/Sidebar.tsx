@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ const Sidebar = () => {
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -40,6 +41,11 @@ const Sidebar = () => {
 
   const toggleLanguage = () => {
     setLanguage(language === 'de' ? 'en' : 'de');
+  };
+
+  // Check if nav is active
+  const isActive = (path: string) => {
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
   return (
@@ -72,7 +78,9 @@ const Sidebar = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
+                className={`flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-sidebar-accent text-sidebar-foreground transition-colors ${
+                  isActive(item.path) ? 'bg-sidebar-accent font-medium' : ''
+                }`}
                 onClick={() => setIsOpen(false)}
               >
                 {item.icon}

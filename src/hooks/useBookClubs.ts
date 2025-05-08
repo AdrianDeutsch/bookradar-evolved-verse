@@ -88,8 +88,8 @@ export function useBookClubs() {
     storage.set(CURRENT_USER_KEY, currentUser);
   }, [currentUser]);
 
-  // Create a new book club
-  const createBookClub = (name: string, description: string, imageUrl?: string): BookClub => {
+  // Create a new book club - making it async
+  const createBookClub = async (name: string, description: string, imageUrl?: string): Promise<BookClub> => {
     if (!name.trim()) {
       throw new Error('Book club name is required');
     }
@@ -114,6 +114,9 @@ export function useBookClubs() {
       ...prevUser,
       joinedClubs: [...prevUser.joinedClubs, newClub.id]
     }));
+    
+    // Simulate async operation for consistency
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     return newClub;
   };
