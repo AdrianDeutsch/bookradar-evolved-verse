@@ -9,8 +9,8 @@ import { useLocalLibrary } from '@/hooks/useLocalLibrary';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton, SkeletonText } from '@/components/ui/skeleton';
-import { ArrowLeft, Users } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { ArrowLeft, AlertCircle } from 'lucide-react';
 // Import our components
 import BookClubHeader from '@/components/bookclubs/BookClubHeader';
 import BookClubActions from '@/components/bookclubs/BookClubActions';
@@ -35,6 +35,7 @@ const BookClubDetail = () => {
   
   const [activeTab, setActiveTab] = useState("discussion");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Get club data with a small delay to simulate fetching
   const [club, setClub] = useState(() => {
@@ -49,33 +50,33 @@ const BookClubDetail = () => {
     const timer = setTimeout(() => {
       setLoading(false);
       if (id) {
-        const foundClub = getBookClub(id);
-        setClub(foundClub);
+        try {
+          const foundClub = getBookClub(id);
+          setClub(foundClub);
+          if (!foundClub) {
+            setError(language === 'de'
+              ? 'Die angeforderte Lesegruppe existiert nicht'
+              : 'The requested book club does not exist');
+          } else {
+            setError(null);
+          }
+        } catch (err) {
+          console.error('Error fetching book club:', err);
+          setError(language === 'de'
+            ? 'Beim Laden der Lesegruppe ist ein Fehler aufgetreten'
+            : 'An error occurred while loading the book club');
+        }
       }
     }, 300);
     
     return () => clearTimeout(timer);
-  }, [id, getBookClub]);
+  }, [id, getBookClub, language]);
   
   // Check if user is a member
-  const isMember = id ? isClubMember(id) : false;
+  const isMember = id && club ? isClubMember(id) : false;
   
   // Check if user is admin (creator)
   const isAdmin = club?.members[0] === currentUser.id;
-  
-  // If no club ID or club not found after loading, return to overview
-  useEffect(() => {
-    if (!loading && (!id || !club)) {
-      toast({
-        title: language === 'de' ? 'Lesegruppe nicht gefunden' : 'Book club not found',
-        description: language === 'de'
-          ? 'Die angeforderte Lesegruppe existiert nicht'
-          : 'The requested book club does not exist',
-        variant: "destructive"
-      });
-      navigate('/bookclubs');
-    }
-  }, [id, club, navigate, toast, language, loading]);
   
   // If user is not a member, show about tab
   useEffect(() => {
@@ -115,16 +116,52 @@ const BookClubDetail = () => {
             {language === 'de' ? 'Zurück zu Lesegruppen' : 'Back to Book Clubs'}
           </Button>
           
-          {/* Loading State for Club Header */}
-          <Skeleton className="h-48 sm:h-40 rounded-lg w-full" />
+          <BookClubHeader isLoading={true} club={{
+            id: '',
+            name: '',
+            description: '',
+            createdAt: 0,
+            members: [],
+            currentBookId: null,
+            books: [],
+            messages: []
+          }} isAdmin={false} />
           
-          {/* Loading State for Club Content */}
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full max-w-md" />
-            <div className="space-y-2">
-              <Skeleton className="h-32 w-full" />
-              <Skeleton className="h-32 w-full" />
-            </div>
+          <div className="space-y-4 animate-pulse">
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-4 bg-muted rounded w-1/2"></div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+  
+  // Display error message if club not found
+  if (error) {
+    return (
+      <Layout>
+        <div className="space-y-6 max-w-4xl mx-auto">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/bookclubs')}
+            className="mb-4 gap-2"
+          >
+            <ArrowLeft size={16} />
+            {language === 'de' ? 'Zurück zu Lesegruppen' : 'Back to Book Clubs'}
+          </Button>
+          
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>
+              {language === 'de' ? 'Lesegruppe nicht gefunden' : 'Book club not found'}
+            </AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          
+          <div className="text-center py-8">
+            <Button onClick={() => navigate('/bookclubs')}>
+              {language === 'de' ? 'Zurück zur Übersicht' : 'Back to Overview'}
+            </Button>
           </div>
         </div>
       </Layout>
@@ -192,7 +229,6 @@ const BookClubDetail = () => {
                     onClick={() => navigate(`/bookclubs/join/${id}`)}
                     className="gap-1"
                   >
-                    <Users className="h-4 w-4" />
                     {language === 'de' ? 'Dieser Lesegruppe beitreten' : 'Join this Book Club'}
                   </Button>
                 )}
@@ -242,13 +278,9 @@ const BookClubDetail = () => {
                     )}
                     
                     {/* Current Book Display */}
-                    {currentBook ? (
-                      <div className="mt-4">
-                        <BookClubBook book={currentBook} />
-                      </div>
-                    ) : (
-                      <BookClubBook book={null} />
-                    )}
+                    <div className="mt-4">
+                      <BookClubBook book={currentBook} />
+                    </div>
                     
                     {/* Book History, if any */}
                     {club.books.length > 0 && (

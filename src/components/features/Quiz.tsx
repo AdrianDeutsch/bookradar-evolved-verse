@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +18,7 @@ interface Question {
 }
 
 const generateQuestions = (count: number = 5): Question[] => {
-  // Demo questions for now - in a real app would fetch from API
+  // Ensure titles and authors match correctly
   const questions = [
     {
       id: 1,
@@ -29,7 +28,7 @@ const generateQuestions = (count: number = 5): Question[] => {
         coverUrl: "https://covers.openlibrary.org/b/id/8587183-M.jpg",
       },
       options: ["Paulo Coelho", "Gabriel García Márquez", "Isabel Allende", "Jorge Luis Borges"],
-      correctAnswer: 0,
+      correctAnswer: 0, // Paulo Coelho is the correct author of "Der Alchimist"
     },
     {
       id: 2,
@@ -39,7 +38,7 @@ const generateQuestions = (count: number = 5): Question[] => {
         coverUrl: "https://covers.openlibrary.org/b/id/10523128-M.jpg",
       },
       options: ["J.K. Rowling", "Stephenie Meyer", "Rick Riordan", "C.S. Lewis"],
-      correctAnswer: 0,
+      correctAnswer: 0, // J.K. Rowling is the correct author
     },
     {
       id: 3,
@@ -49,7 +48,7 @@ const generateQuestions = (count: number = 5): Question[] => {
         coverUrl: "https://covers.openlibrary.org/b/id/8575111-M.jpg",
       },
       options: ["Franz Kafka", "George Orwell", "Aldous Huxley", "Ray Bradbury"],
-      correctAnswer: 1,
+      correctAnswer: 1, // George Orwell is the correct author of "1984"
     },
     {
       id: 4,
@@ -59,7 +58,7 @@ const generateQuestions = (count: number = 5): Question[] => {
         coverUrl: "https://covers.openlibrary.org/b/id/9317384-M.jpg",
       },
       options: ["Michael Ende", "Astrid Lindgren", "Cornelia Funke", "Otfried Preußler"],
-      correctAnswer: 0,
+      correctAnswer: 0, // Michael Ende is the correct author
     },
     {
       id: 5,
@@ -69,7 +68,37 @@ const generateQuestions = (count: number = 5): Question[] => {
         coverUrl: "https://covers.openlibrary.org/b/id/7895100-M.jpg",
       },
       options: ["Charles Perrault", "Hans Christian Andersen", "Antoine de Saint-Exupéry", "Jules Verne"],
-      correctAnswer: 2,
+      correctAnswer: 2, // Antoine de Saint-Exupéry is the correct author
+    },
+    {
+      id: 6,
+      book: {
+        title: "To Kill a Mockingbird",
+        author: "Harper Lee",
+        coverUrl: "https://covers.openlibrary.org/b/id/12000553-M.jpg",
+      },
+      options: ["Ernest Hemingway", "Harper Lee", "John Steinbeck", "F. Scott Fitzgerald"],
+      correctAnswer: 1, // Harper Lee is the correct author
+    },
+    {
+      id: 7,
+      book: {
+        title: "Die Verwandlung",
+        author: "Franz Kafka",
+        coverUrl: "https://covers.openlibrary.org/b/id/12890279-M.jpg",
+      },
+      options: ["Thomas Mann", "Hermann Hesse", "Franz Kafka", "Stefan Zweig"],
+      correctAnswer: 2, // Franz Kafka is the correct author
+    },
+    {
+      id: 8,
+      book: {
+        title: "Pride and Prejudice",
+        author: "Jane Austen",
+        coverUrl: "https://covers.openlibrary.org/b/id/12645114-M.jpg",
+      },
+      options: ["Jane Austen", "Charlotte Brontë", "Emily Brontë", "Virginia Woolf"],
+      correctAnswer: 0, // Jane Austen is the correct author
     },
   ];
   

@@ -33,6 +33,10 @@ const BookClubHeader = ({ club, isAdmin, isLoading = false }: BookClubHeaderProp
           src={club.imageUrl} 
           alt={club.name} 
           className="absolute inset-0 w-full h-full object-cover mix-blend-overlay"
+          onError={(e) => {
+            // Hide broken images
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
         />
       )}
       <div className="absolute inset-0 bg-black/20 p-6 flex flex-col justify-end">

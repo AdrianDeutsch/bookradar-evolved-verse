@@ -95,7 +95,7 @@ export function useBookClubs() {
     }
     
     const newClub: BookClub = {
-      id: 'club_' + Date.now(),
+      id: 'club_' + Date.now().toString(),
       name,
       description,
       createdAt: Date.now(),
@@ -225,10 +225,10 @@ export function useBookClubs() {
     if (!content.trim() || !isClubMember(clubId)) return false;
     
     const newMessage: BookClubMessage = {
-      id: 'msg_' + Date.now(),
+      id: 'msg_' + Date.now().toString(),
       userId: currentUser.id,
       username: currentUser.name,
-      content,
+      content: content.trim(),
       timestamp: Date.now()
     };
     
