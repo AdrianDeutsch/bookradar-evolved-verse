@@ -62,9 +62,9 @@ const BookClubActions = ({ clubId, isMember }: BookClubActionsProps) => {
     <>
       {isMember && (
         <Button
-          variant="outline"
+          variant="destructive"
           size="sm"
-          className="absolute top-4 right-4 gap-1 bg-white"
+          className="absolute top-4 right-4 gap-1 shadow-md animate-pulse hover:animate-none"
           onClick={handleLeaveClub}
           disabled={leavingGroup}
         >
