@@ -10,79 +10,80 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Book, Calendar, Star, Smile, HelpCircle, RefreshCcw } from 'lucide-react';
+import { searchBooks, SearchResult } from '@/services/bookService';
+import { useToast } from '@/hooks/use-toast';
 
-// Import our new feature components
+// Import our feature components
 import Quiz from '@/components/features/Quiz';
 import MoodMatching from '@/components/features/MoodMatching';
 import RandomBook from '@/components/features/RandomBook';
 
 const Index = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Sample data - in a real app, this would come from an API
-  const recentBooks = [
-    {
-      id: '1',
-      title: 'Der Alchimist',
-      author: 'Paulo Coelho',
-      coverUrl: 'https://covers.openlibrary.org/b/id/8587183-M.jpg',
-      rating: 4.5
-    },
-    {
-      id: '2',
-      title: 'Harry Potter und der Stein der Weisen',
-      author: 'J.K. Rowling',
-      coverUrl: 'https://covers.openlibrary.org/b/id/10523128-M.jpg',
-      rating: 4.8
-    },
-    {
-      id: '3',
-      title: 'Der kleine Prinz',
-      author: 'Antoine de Saint-Exupéry',
-      coverUrl: 'https://covers.openlibrary.org/b/id/7895100-M.jpg',
-      rating: 4.7
-    },
-    {
-      id: '4',
-      title: 'Die unendliche Geschichte',
-      author: 'Michael Ende',
-      coverUrl: 'https://covers.openlibrary.org/b/id/9317384-M.jpg',
-      rating: 4.6
-    }
-  ];
+  // States für dynamisch geladene Bücher
+  const [recommendedBooks, setRecommendedBooks] = useState<SearchResult[]>([]);
+  const [recentBooks, setRecentBooks] = useState<SearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const recommendedBooks = [
-    {
-      id: '5',
-      title: 'Der Herr der Ringe',
-      author: 'J.R.R. Tolkien',
-      coverUrl: 'https://covers.openlibrary.org/b/id/12746184-M.jpg',
-      rating: 4.9
-    },
-    {
-      id: '6',
-      title: 'Die Verwandlung',
-      author: 'Franz Kafka',
-      coverUrl: 'https://covers.openlibrary.org/b/id/9334999-M.jpg',
-      rating: 4.3
-    },
-    {
-      id: '7',
-      title: 'Pride and Prejudice',
-      author: 'Jane Austen',
-      coverUrl: 'https://covers.openlibrary.org/b/id/8405236-M.jpg',
-      rating: 4.7
-    },
-    {
-      id: '8',
-      title: '1984',
-      author: 'George Orwell',
-      coverUrl: 'https://covers.openlibrary.org/b/id/8575111-M.jpg',
-      rating: 4.8
+  // Funktion zum Laden der empfohlenen Bücher
+  const loadRecommendedBooks = async () => {
+    try {
+      const books = await searchBooks({
+        query: language === 'de' ? 'bestseller roman' : 'bestseller fiction',
+        limit: 4
+      });
+      setRecommendedBooks(books);
+    } catch (error) {
+      console.error('Error loading recommended books:', error);
+      toast({
+        title: language === 'de' ? 'Fehler beim Laden' : 'Error Loading',
+        description: language === 'de' 
+          ? 'Empfohlene Bücher konnten nicht geladen werden.' 
+          : 'Failed to load recommended books.',
+        variant: 'destructive',
+      });
     }
-  ];
+  };
+
+  // Funktion zum Laden der kürzlich hinzugefügten Bücher
+  const loadRecentBooks = async () => {
+    try {
+      const books = await searchBooks({
+        query: language === 'de' ? 'neu erschienen' : 'new release',
+        limit: 4
+      });
+      setRecentBooks(books);
+    } catch (error) {
+      console.error('Error loading recent books:', error);
+      toast({
+        title: language === 'de' ? 'Fehler beim Laden' : 'Error Loading',
+        description: language === 'de' 
+          ? 'Aktuelle Bücher konnten nicht geladen werden.' 
+          : 'Failed to load recent books.',
+        variant: 'destructive',
+      });
+    }
+    finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Bücher beim ersten Laden holen
+  useEffect(() => {
+    setIsLoading(true);
+    const loadData = async () => {
+      await Promise.all([
+        loadRecommendedBooks(),
+        loadRecentBooks()
+      ]);
+    };
+    
+    loadData();
+  }, [language]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -91,19 +92,6 @@ const Index = () => {
       navigate(`/search?q=${encodeURIComponent(query)}`);
     }
   };
-
-  useEffect(() => {
-    // Pre-load book cover images to reduce loading issues
-    [...recentBooks, ...recommendedBooks].forEach(book => {
-      if (book.coverUrl) {
-        const img = new Image();
-        img.src = book.coverUrl;
-        img.onerror = () => {
-          console.log(`Failed to preload cover for book ${book.title}`);
-        };
-      }
-    });
-  }, []);
 
   return (
     <Layout>
@@ -276,32 +264,74 @@ const Index = () => {
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="recommended" className="pt-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {recommendedBooks.map(book => (
-                    <BookCard
-                      key={book.id}
-                      id={book.id}
-                      title={book.title}
-                      author={book.author}
-                      coverUrl={book.coverUrl}
-                      rating={book.rating}
-                    />
-                  ))}
-                </div>
+                {isLoading ? (
+                  <div className="flex justify-center py-12">
+                    <RefreshCcw className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : recommendedBooks.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {recommendedBooks.map(book => (
+                      <BookCard
+                        key={book.id}
+                        id={book.id}
+                        title={book.title}
+                        author={book.author}
+                        coverUrl={book.coverUrl || ''}
+                        rating={book.rating}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">
+                      {language === 'de' 
+                        ? 'Keine Buchempfehlungen verfügbar.' 
+                        : 'No book recommendations available.'}
+                    </p>
+                    <Button 
+                      variant="outline"
+                      className="mt-4"
+                      onClick={loadRecommendedBooks}
+                    >
+                      {language === 'de' ? 'Erneut versuchen' : 'Try Again'}
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
               <TabsContent value="recent" className="pt-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {recentBooks.map(book => (
-                    <BookCard
-                      key={book.id}
-                      id={book.id}
-                      title={book.title}
-                      author={book.author}
-                      coverUrl={book.coverUrl}
-                      rating={book.rating}
-                    />
-                  ))}
-                </div>
+                {isLoading ? (
+                  <div className="flex justify-center py-12">
+                    <RefreshCcw className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : recentBooks.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {recentBooks.map(book => (
+                      <BookCard
+                        key={book.id}
+                        id={book.id}
+                        title={book.title}
+                        author={book.author}
+                        coverUrl={book.coverUrl || ''}
+                        rating={book.rating}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">
+                      {language === 'de' 
+                        ? 'Keine neuen Bücher verfügbar.' 
+                        : 'No new books available.'}
+                    </p>
+                    <Button 
+                      variant="outline"
+                      className="mt-4"
+                      onClick={loadRecentBooks}
+                    >
+                      {language === 'de' ? 'Erneut versuchen' : 'Try Again'}
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
