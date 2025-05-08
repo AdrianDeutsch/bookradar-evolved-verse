@@ -33,7 +33,6 @@ const Sidebar = () => {
     { name: t('home'), path: '/', icon: <Book className="h-5 w-5" /> },
     { name: t('search'), path: '/search', icon: <Search className="h-5 w-5" /> },
     { name: t('library'), path: '/library', icon: <BookOpen className="h-5 w-5" /> },
-    { name: t('bookClubs'), path: '/bookclubs', icon: <UsersRound className="h-5 w-5" /> },
     { name: t('recommendations'), path: '/recommendations', icon: <Star className="h-5 w-5" /> },
     { name: t('statistics'), path: '/statistics', icon: <BarChart2 className="h-5 w-5" /> },
     { name: t('settings'), path: '/settings', icon: <Settings className="h-5 w-5" /> },
@@ -87,6 +86,20 @@ const Sidebar = () => {
                 <span>{item.name}</span>
               </Link>
             ))}
+            
+            {/* Hervorgehobener Lesegruppen-Button */}
+            <Link
+              to="/bookclubs"
+              className={`mt-4 flex items-center justify-center py-3 px-3 rounded-lg transition-all transform hover:scale-105 
+                ${isActive('/bookclubs') 
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-500/30' 
+                  : 'bg-purple-500/80 text-white hover:bg-purple-600'
+                }`}
+              onClick={() => setIsOpen(false)}
+            >
+              <UsersRound className="h-5 w-5 mr-2" />
+              <span className="font-medium">{language === 'de' ? 'Lesegruppen' : 'Book Clubs'}</span>
+            </Link>
           </nav>
 
           <div className="p-4 border-t border-sidebar-border">
