@@ -12,17 +12,16 @@ import BookClubCard from './BookClubCard';
 interface BookClubsListProps {
   variant?: 'all' | 'joined';
   limit?: number;
-  searchQuery?: string;
 }
 
 const BookClubsList: React.FC<BookClubsListProps> = ({ 
   variant = 'all',
-  limit,
-  searchQuery = ''
+  limit
 }) => {
   const navigate = useNavigate();
   const { language } = useLanguage();
   const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState('');
   const [isJoining, setIsJoining] = useState<string | null>(null);
   
   const { 
@@ -37,8 +36,8 @@ const BookClubsList: React.FC<BookClubsListProps> = ({
   let displayedClubs = variant === 'joined' ? userClubs : bookClubs;
   
   // Filter by search term
-  if (searchQuery) {
-    displayedClubs = searchBookClubs(searchQuery);
+  if (searchTerm) {
+    displayedClubs = searchBookClubs(searchTerm);
     
     // If on "joined" tab, only show joined clubs that match search
     if (variant === 'joined') {
@@ -97,6 +96,27 @@ const BookClubsList: React.FC<BookClubsListProps> = ({
   
   return (
     <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="relative max-w-md flex-1 min-w-0 w-full">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder={language === 'de' ? "Lesegruppen durchsuchen..." : "Search book clubs..."}
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <Button 
+          onClick={() => navigate('/bookclubs/new')}
+          className="gap-1 whitespace-nowrap"
+          size="sm"
+        >
+          <Plus size={16} />
+          {language === 'de' ? 'Neue Gruppe' : 'New Club'}
+        </Button>
+      </div>
+      
       {displayedClubs.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {displayedClubs.map(club => (
@@ -130,16 +150,16 @@ const BookClubsList: React.FC<BookClubsListProps> = ({
               {language === 'de' ? 'Alle Lesegruppen anzeigen' : 'View all book clubs'}
             </Button>
           )}
-          {variant === 'all' && searchQuery && (
+          {variant === 'all' && searchTerm && (
             <Button
-              onClick={() => navigate('/bookclubs')}
+              onClick={() => setSearchTerm('')}
               variant="outline"
               className="mt-6"
             >
               {language === 'de' ? 'Suche zurücksetzen' : 'Clear search'}
             </Button>
           )}
-          {variant === 'all' && !searchQuery && (
+          {variant === 'all' && !searchTerm && (
             <Button
               onClick={() => navigate('/bookclubs/new')}
               variant="default"

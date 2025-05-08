@@ -52,12 +52,6 @@ const CreateBookClub = () => {
         imageUrl.trim() || undefined
       );
       
-      if (!newClub) {
-        throw new Error(language === 'de'
-          ? 'Die Lesegruppe konnte nicht erstellt werden'
-          : 'Failed to create the book club');
-      }
-      
       toast({
         title: language === 'de' ? 'Lesegruppe erstellt' : 'Book club created',
         description: language === 'de'

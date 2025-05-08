@@ -4,27 +4,14 @@ import { useLanguage } from '@/context/LanguageContext';
 import { BookClub } from '@/hooks/useBookClubs';
 import { Badge } from '@/components/ui/badge';
 import { Users, Settings } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 
 interface BookClubHeaderProps {
   club: BookClub;
   isAdmin: boolean;
-  isLoading?: boolean;
 }
 
-const BookClubHeader = ({ club, isAdmin, isLoading = false }: BookClubHeaderProps) => {
+const BookClubHeader = ({ club, isAdmin }: BookClubHeaderProps) => {
   const { language } = useLanguage();
-  
-  if (isLoading) {
-    return (
-      <div className="relative h-48 sm:h-40 rounded-lg overflow-hidden bg-gradient-to-r from-blue-500/50 to-purple-600/50 animate-pulse">
-        <div className="absolute inset-0 bg-black/20 p-6 flex flex-col justify-end">
-          <Skeleton className="h-8 w-2/3 mb-2" />
-          <Skeleton className="h-4 w-1/4" />
-        </div>
-      </div>
-    );
-  }
   
   return (
     <div className="relative h-48 sm:h-40 rounded-lg overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600">
