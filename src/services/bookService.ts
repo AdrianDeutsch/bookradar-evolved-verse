@@ -12,6 +12,7 @@ export interface SearchResult {
   publishYear?: number | null;
   description?: string | null;
   authorBio?: string | null;
+  rating?: number;
 }
 
 export interface SearchOptions {
