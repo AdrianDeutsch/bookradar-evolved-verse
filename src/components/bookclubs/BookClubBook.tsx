@@ -4,14 +4,27 @@ import { LibraryBook } from '@/hooks/useLocalLibrary';
 import BookCard from '@/components/books/BookCard';
 import { useLanguage } from '@/context/LanguageContext';
 import { Book } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface BookClubBookProps {
   book: LibraryBook | null;
   showTitle?: boolean;
+  isLoading?: boolean;
 }
 
-const BookClubBook = ({ book, showTitle = true }: BookClubBookProps) => {
+const BookClubBook = ({ book, showTitle = true, isLoading = false }: BookClubBookProps) => {
   const { language } = useLanguage();
+  
+  if (isLoading) {
+    return (
+      <div className={showTitle ? "space-y-2" : ""}>
+        {showTitle && <Skeleton className="h-6 w-48 mb-2" />}
+        <div className="w-48">
+          <Skeleton className="h-64 w-full rounded-md" />
+        </div>
+      </div>
+    );
+  }
   
   if (!book) {
     return (
